@@ -1,17 +1,20 @@
 # dragino lora testing
 # Single lora testing app
 
-CC=g++
-CFLAGS=-c -Wall
-LIBS=-lwiringPi
+CC=gcc
+CFLAGS=-Wall
+LDFLAGS=-lwiringPi
+OBJFILES = main.o sx1276.o
+TARGET = dragino_lora_app
 
-all: dragino_lora_app
+all: $(TARGET)
 
-dragino_lora_app: main.o
-	$(CC) main.o  $(LIBS) -o dragino_lora_app
-
-main.o: main.c
-	$(CC) $(CFLAGS) main.c
+$(TARGET): $(OBJFILES)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJFILES) $(LDFLAGS)
 
 clean:
-	rm *.o dragino_lora_app	
+	rm -f $(OBJFILES) $(TARGET) *~
+
+
+
+
