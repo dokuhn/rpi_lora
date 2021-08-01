@@ -197,6 +197,9 @@ boolean receive(char *payload) {
         {
             payload[i] = (char)readReg(REG_FIFO);
         }
+
+	payload[receivedCount+1] = '\0';
+
     }
     return true;
 }
