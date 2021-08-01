@@ -113,6 +113,7 @@ void SetupLoRa()
     if (version == 0x22) {
         // sx1272
         printf("SX1272 detected, starting.\n");
+	fflush(stdout);
         sx1272 = true;
     } else {
         // sx1276?
@@ -124,9 +125,11 @@ void SetupLoRa()
         if (version == 0x12) {
             // sx1276
             printf("SX1276 detected, starting.\n");
+            fflush(stdout);
             sx1272 = false;
         } else {
             printf("Unrecognized transceiver.\n");
+            fflush(stdout);
             //printf("Version: 0x%x\n",version);
             exit(1);
         }
@@ -183,6 +186,7 @@ boolean receive(char *payload) {
     if((irqflags & IRQ_LORA_CRCERR_MASK) != 0u)
     {
         printf("CRC error\n");
+        fflush(stdout);
         writeReg(REG_IRQ_FLAGS, IRQ_LORA_CRCERR_MASK);
         return false;
     } else {
@@ -237,6 +241,7 @@ void receivepacket() {
             printf("Length: %i", (int)receivedbytes);
             printf("\n");
             printf("Payload: %s\n", message);
+	    fflush(stdout);
 
         } // received a message
 
@@ -297,6 +302,7 @@ void txlora(byte *frame, byte datalen) {
     opmode(OPMODE_TX);
 
     printf("send: %s\n", frame);
+    fflush(stdout);
 }
 
 void isr_handler(void){

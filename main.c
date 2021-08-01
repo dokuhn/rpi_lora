@@ -56,6 +56,7 @@ int main (int argc, char *argv[]) {
 
     if (argc < 2) {
         printf ("Usage: argv[0] sender|rec [message]\n");
+        fflush(stdout);
         exit(1);
     }
 
@@ -80,16 +81,15 @@ int main (int argc, char *argv[]) {
 
         printf("Send packets at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
         printf("------------------\n");
+	fflush(stdout);
 
         //if (argc > 2)
         //    strncpy((char *)hello, argv[2], sizeof(hello));
 
         while( readline(STDIN_FILENO, line_buffer, sizeof(line_buffer)) > 1 ){
 
-            printf("%s", line_buffer);
-
             txlora((byte*)line_buffer, (byte)strlen(line_buffer));
-            // delay(5000);
+            delay(500);
         }
 
     } else {
@@ -100,10 +100,11 @@ int main (int argc, char *argv[]) {
         opmode(OPMODE_RX);
         printf("Listening at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
         printf("------------------\n");
+        fflush(stdout);
 
-	    void (*fun_ptr2receivePackageISR)(void) = &isr_handler;
+	void (*fun_ptr2receivePackageISR)(void) = &isr_handler;
 
-	    wiringPiISR(dio0, INT_EDGE_RISING, fun_ptr2receivePackageISR);
+	wiringPiISR(dio0, INT_EDGE_RISING, fun_ptr2receivePackageISR);
 
         while(1) {
             delay(5000);
