@@ -5,18 +5,24 @@
  * 
  *
  *******************************************************************************/
-#include <errno.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <stdlib.h>
 
-#include <wiringPi.h>
-#include <wiringPiSPI.h>
+extern "C" {
 
-#include "sx1276.h"
+    #include <errno.h>
+    #include <stdio.h>
+    #include <unistd.h>
+    #include <string.h>
+    #include <sys/types.h>
+    #include <sys/time.h>
+    #include <stdlib.h>
+
+    #include <wiringPi.h>
+    #include <wiringPiSPI.h>
+}
+
+#include "sx1276.hpp"
+
+
 
 
 int readline(int fd, char *buf, int nbytes)
@@ -46,6 +52,11 @@ int readline(int fd, char *buf, int nbytes)
 }
 
 
+extern "C" void isr_handler_wrapper(sx1276* ptr2sx1276Inst)
+{
+    ptr2sx1276Inst->isr_handler();
+
+}
 
 
 
@@ -54,6 +65,8 @@ int main (int argc, char *argv[]) {
     int buffer_size = 256;
     char line_buffer[buffer_size];
 
+    sx1276 sx1276Inst;
+
     if (argc < 2) {
         printf ("Usage: argv[0] sender|rec [message]\n");
         fflush(stdout);
@@ -61,53 +74,54 @@ int main (int argc, char *argv[]) {
     }
 
     wiringPiSetup () ;
-    pinMode(ssPin, OUTPUT);
-    pinMode(dio0, INPUT);
-    pinMode(RST, OUTPUT);
+    pinMode(sx1276Inst.ssPin, OUTPUT);
+    pinMode(sx1276Inst.dio0, INPUT);
+    pinMode(sx1276Inst.RST, OUTPUT);
 
-    wiringPiSPISetup(CHANNEL, 500000);
+    wiringPiSPISetup(sx1276Inst.CHANNEL, 500000);
 
-    SetupLoRa();
+    sx1276Inst.SetupLoRa();
 
 
     if (!strcmp("sender", argv[1])) {
-        opmodeLora();
+        sx1276Inst.opmodeLora();
         // enter standby mode (required for FIFO loading))
-        opmode(OPMODE_STANDBY);
+        sx1276Inst.opmode(OPMODE_STANDBY);
 
-        writeReg(RegPaRamp, (readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
+        sx1276Inst.writeReg(RegPaRamp, (sx1276Inst.readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
 
-        configPower(23);
+        sx1276Inst.configPower(23);
 
-        printf("Send packets at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
+        printf("Send packets at SF%i on %.6lf Mhz.\n", sx1276Inst.sf,(double)sx1276Inst.freq/1000000);
         printf("------------------\n");
-	fflush(stdout);
+	    fflush(stdout);
 
         //if (argc > 2)
         //    strncpy((char *)hello, argv[2], sizeof(hello));
 
         while( readline(STDIN_FILENO, line_buffer, sizeof(line_buffer)) > 1 ){
 
-            txlora((byte*)line_buffer, (byte)strlen(line_buffer));
+            sx1276Inst.txlora((byte*)line_buffer, (byte)strlen(line_buffer));
             delay(500);
         }
 
     } else {
 
         // radio init
-        opmodeLora();
-        opmode(OPMODE_STANDBY);
-        opmode(OPMODE_RX);
-        printf("Listening at SF%i on %.6lf Mhz.\n", sf,(double)freq/1000000);
+        sx1276Inst.opmodeLora();
+        sx1276Inst.opmode(OPMODE_STANDBY);
+        sx1276Inst.opmode(OPMODE_RX);
+        printf("Listening at SF%i on %.6lf Mhz.\n", sx1276Inst.sf,(double)sx1276Inst.freq/1000000);
         printf("------------------\n");
         fflush(stdout);
 
-	void (*fun_ptr2receivePackageISR)(void) = &isr_handler;
+	    // void (*fun_ptr2isr_handler)(SX1276* ptr2sx1276Inst) = &isr_handler_wrapper;
 
-	wiringPiISR(dio0, INT_EDGE_RISING, fun_ptr2receivePackageISR);
+	    // wiringPiISR(sx1276Inst.dio0, INT_EDGE_RISING, fun_ptr2isr_handler);
 
         while(1) {
-            delay(5000);
+            sx1276Inst.receivepacket(); 
+            delay(1);
         }
 
     }

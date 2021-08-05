@@ -9,15 +9,19 @@
 #define __SX1276_H__
 
 // #include "sx1276_RegsLoRa.hpp"
-# include <stdio.h>
-# include <sys/types.h>
-# include <string.h>
-# include <sys/time.h>
-# include <unistd.h>
-# include <stdlib.h>
-# include <stdbool.h>
-# include <stdint.h>
- 
+
+extern "C" {
+
+    # include <stdio.h>
+    # include <sys/types.h>
+    # include <string.h>
+    # include <sys/time.h>
+    # include <unistd.h>
+    # include <stdlib.h>
+    # include <stdbool.h>
+    # include <stdint.h>
+
+}
  
 // #############################################
 // #############################################
@@ -137,20 +141,11 @@
 # define MAP_DIO1_LORA_NOP      0x30  // --11----
 # define MAP_DIO2_LORA_NOP      0xC0  // ----11--
 
-
 // #############################################
 // #############################################
 //
 typedef bool boolean;
 typedef unsigned char byte;
-
-extern const int CHANNEL;
-
-extern char message[256];
-
-extern bool sx1272;
-
-extern byte receivedbytes;
 
 typedef enum
 {
@@ -162,54 +157,72 @@ typedef enum
     SF12
 } sf_t;
 
-/*******************************************************************************
-*
-* Configure these values!
-*
-*******************************************************************************/
 
-// SX127X - Raspberry connections
-extern int ssPin;
-extern int dio0;
-extern int RST;
+class sx1276 {
+ 
+    public:
 
-// Set spreading factor (SF7 - SF12)
-extern sf_t sf;
+        const int CHANNEL = 0;
 
-// Set center frequency
-extern uint32_t  freq; // in Mhz! (868.1)
+        // SX127X - Raspberry connections
+        int ssPin = 6;
+        int dio0  = 7;
+        int RST   = 0;
 
-extern byte hello[32];
+        // Set spreading factor (SF7 - SF12)
+        sf_t sf = SF7;
+
+        // Set center frequency
+        uint32_t  freq = 868100000; // in Mhz! (868.1)
+
+        void die(const char *s);
+
+        void selectreceiver(void);
+
+        void unselectreceiver();
+
+        byte readReg(byte addr);
+
+        void writeReg(byte addr, byte value);
+
+        void opmode (uint8_t mode);
+
+        void opmodeLora();
+
+        void SetupLoRa();
+
+        boolean receive(char *payload);
+
+        void receivepacket();
+
+        void configPower (int8_t pw);
+
+        void writeBuf(byte addr, byte *value, byte len);
+
+        void txlora(byte *frame, byte datalen);
+
+        void isr_handler(void);     
 
 
-void die(const char *s);
+    private:
 
-void selectreceiver(void);
+       
 
-void unselectreceiver();
+        char message[256];
 
-byte readReg(byte addr);
+        bool sx1272 = true;
 
-void writeReg(byte addr, byte value);
+        byte receivedbytes;
 
-void opmode (uint8_t mode);
+        /*******************************************************************************
+        *
+        * Configure these values!
+        *
+        *******************************************************************************/
 
-void opmodeLora();
+        
 
-void SetupLoRa();
-
-boolean receive(char *payload);
-
-void receivepacket();
-
-void configPower (int8_t pw);
-
-void writeBuf(byte addr, byte *value, byte len);
-
-void txlora(byte *frame, byte datalen);
-
-void isr_handler(void);     
-
+};
 
 
 #endif

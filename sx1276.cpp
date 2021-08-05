@@ -5,65 +5,42 @@
 /// \file sx1276.c
 /// 
 
-#include <stdio.h>
-#include <sys/types.h>
-#include <string.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdbool.h>
+extern "C" {
+    #include <stdio.h>
+    #include <sys/types.h>
+    #include <string.h>
+    #include <sys/time.h>
+    #include <unistd.h>
+    #include <stdlib.h>
+    #include <stdbool.h>
 
-#include <wiringPi.h>
-#include <wiringPiSPI.h>
+    #include <wiringPi.h>
+    #include <wiringPiSPI.h>
+}
 
-#include "sx1276.h"
-
-const int CHANNEL = 0;
-
-char message[256];
-
-bool sx1272 = true;
-
-byte receivedbytes;
-
-/*******************************************************************************
-*
-* Configure these values!
-*
-*******************************************************************************/
-
-// SX127X - Raspberry connections
-int ssPin = 6;
-int dio0  = 7;
-int RST   = 0;
-
-// Set spreading factor (SF7 - SF12)
-sf_t sf = SF7;
-
-// Set center frequency
-uint32_t  freq = 868100000; // in Mhz! (868.1)
-
-byte hello[32] = "HELLO";
+#include "sx1276.hpp"
 
 
-void die(const char *s)
+
+
+void sx1276::die(const char *s)
 {
     perror(s);
     exit(1);
 }
 
 
-void selectreceiver()
+void sx1276::selectreceiver()
 {
     digitalWrite(ssPin, LOW);
 }
 
-void unselectreceiver()
+void sx1276::unselectreceiver()
 {
     digitalWrite(ssPin, HIGH);
 }
 
-byte readReg(byte addr)
+byte sx1276::readReg(byte addr)
 {
     unsigned char spibuf[2];
 
@@ -76,7 +53,7 @@ byte readReg(byte addr)
     return spibuf[1];
 }
 
-void writeReg(byte addr, byte value)
+void sx1276::writeReg(byte addr, byte value)
 {
     unsigned char spibuf[2];
 
@@ -88,11 +65,11 @@ void writeReg(byte addr, byte value)
     unselectreceiver();
 }
 
-void opmode (uint8_t mode) {
+void sx1276::opmode (uint8_t mode) {
     writeReg(REG_OPMODE, (readReg(REG_OPMODE) & ~OPMODE_MASK) | mode);
 }
 
-void opmodeLora() {
+void sx1276::opmodeLora() {
     uint8_t u = OPMODE_LORA;
     if (sx1272 == false)
         u |= 0x8;   // TBD: sx1276 high freq
@@ -100,7 +77,7 @@ void opmodeLora() {
 }
 
 
-void SetupLoRa()
+void sx1276::SetupLoRa()
 {
     
     digitalWrite(RST, HIGH);
@@ -113,7 +90,7 @@ void SetupLoRa()
     if (version == 0x22) {
         // sx1272
         printf("SX1272 detected, starting.\n");
-	fflush(stdout);
+	    fflush(stdout);
         sx1272 = true;
     } else {
         // sx1276?
@@ -124,7 +101,7 @@ void SetupLoRa()
         version = readReg(REG_VERSION);
         if (version == 0x12) {
             // sx1276
-            printf("SX1276 detected, starting.\n");
+            printf("sx1276 detected, starting.\n");
             fflush(stdout);
             sx1272 = false;
         } else {
@@ -176,7 +153,7 @@ void SetupLoRa()
 
 }
 
-boolean receive(char *payload) {
+boolean sx1276::receive(char *payload) {
     // clear rxDone
     writeReg(REG_IRQ_FLAGS, IRQ_LORA_RXDONE_MASK);
 
@@ -208,7 +185,7 @@ boolean receive(char *payload) {
     return true;
 }
 
-void receivepacket() {
+void sx1276::receivepacket() {
 
     long int SNR;
     int rssicorr;
@@ -248,7 +225,7 @@ void receivepacket() {
     } // dio0=1
 }
 
-void configPower (int8_t pw) {
+void sx1276::configPower (int8_t pw) {
     if (sx1272 == false) {
         // no boost used for now
         if(pw >= 17) {
@@ -271,7 +248,7 @@ void configPower (int8_t pw) {
     }
 }
 
-void writeBuf(byte addr, byte *value, byte len) {                                                       
+void sx1276::writeBuf(byte addr, byte *value, byte len) {                                                       
     unsigned char spibuf[256];                                                                          
     spibuf[0] = addr | 0x80;                                                                            
     for (int i = 0; i < len; i++) {                                                                         
@@ -282,7 +259,7 @@ void writeBuf(byte addr, byte *value, byte len) {
     unselectreceiver();                                                                                 
 }
 
-void txlora(byte *frame, byte datalen) {
+void sx1276::txlora(byte *frame, byte datalen) {
 
     // set the IRQ mapping DIO0=TxDone DIO1=NOP DIO2=NOP
     writeReg(RegDioMapping1, MAP_DIO0_LORA_TXDONE|MAP_DIO1_LORA_NOP|MAP_DIO2_LORA_NOP);
@@ -305,13 +282,21 @@ void txlora(byte *frame, byte datalen) {
     fflush(stdout);
 }
 
-void isr_handler(void){
+void sx1276::isr_handler(void){
+
 
    const int irqflags = readReg(REG_IRQ_FLAGS);
 
    if( (irqflags &  IRQ_LORA_RXDONE_MASK)  != 0u ){
 
-     receivepacket();
+        receivepacket();
+   }
+
+   if( (irqflags & IRQ_LORA_TXDONE_MASK) != 0u ){
+        
+        // clear Irq
+        writeReg(REG_IRQ_FLAGS, IRQ_LORA_TXDONE_MASK);
+
    }
 
 }
