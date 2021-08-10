@@ -185,7 +185,7 @@ boolean sx1276::receive(char *payload) {
     return true;
 }
 
-void sx1276::receivepacket() {
+const char* sx1276::receivepacket() {
 
     long int SNR;
     int rssicorr;
@@ -219,6 +219,8 @@ void sx1276::receivepacket() {
             printf("\n");
             printf("Payload: %s\n", message);
 	    fflush(stdout);
+
+	    return (const char*)message;
 
         } // received a message
 

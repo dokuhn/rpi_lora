@@ -112,27 +112,27 @@ extern "C" {
  
 // ----------------------------------------
 // Constants for radio registers
-# define OPMODE_LORA      0x80
-# define OPMODE_MASK      0x07
-# define OPMODE_SLEEP     0x00
-# define OPMODE_STANDBY   0x01
-# define OPMODE_FSTX      0x02
-# define OPMODE_TX        0x03
-# define OPMODE_FSRX      0x04
-# define OPMODE_RX        0x05
-# define OPMODE_RX_SINGLE 0x06
-# define OPMODE_CAD       0x07
+# define OPMODE_LORA            0x80
+# define OPMODE_MASK            0x07
+# define OPMODE_SLEEP           0x00
+# define OPMODE_STANDBY         0x01
+# define OPMODE_FSTX            0x02
+# define OPMODE_TX              0x03
+# define OPMODE_FSRX            0x04
+# define OPMODE_RX              0x05
+# define OPMODE_RX_SINGLE       0x06
+# define OPMODE_CAD             0x07
  
 // ----------------------------------------
 // Bits masking the corresponding IRQs from the radio
-# define IRQ_LORA_RXTOUT_MASK 0x80
-# define IRQ_LORA_RXDONE_MASK 0x40
-# define IRQ_LORA_CRCERR_MASK 0x20
-# define IRQ_LORA_HEADER_MASK 0x10
-# define IRQ_LORA_TXDONE_MASK 0x08
-# define IRQ_LORA_CDDONE_MASK 0x04
-# define IRQ_LORA_FHSSCH_MASK 0x02
-# define IRQ_LORA_CDDETD_MASK 0x01
+# define IRQ_LORA_RXTOUT_MASK   0x80
+# define IRQ_LORA_RXDONE_MASK   0x40
+# define IRQ_LORA_CRCERR_MASK   0x20
+# define IRQ_LORA_HEADER_MASK   0x10
+# define IRQ_LORA_TXDONE_MASK   0x08
+# define IRQ_LORA_CDDONE_MASK   0x04
+# define IRQ_LORA_FHSSCH_MASK   0x02
+# define IRQ_LORA_CDDETD_MASK   0x01
  
 // DIO function mappings                D0D1D2D3
 # define MAP_DIO0_LORA_RXDONE   0x00  // 00------
@@ -193,7 +193,7 @@ class sx1276 {
 
         boolean receive(char *payload);
 
-        void receivepacket();
+        const char* receivepacket();
 
         void configPower (int8_t pw);
 
