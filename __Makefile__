@@ -2,10 +2,10 @@
 # Single lora testing app
 
 CC = g++
-CFLAGS = -Wall
 INCLUDES = /home/pi/paho.mqtt.cpp/src
+CFLAGS = -Wall -Wextra -pedantic -Werror -std=c++17
 LDFLAGS = -lwiringPi -lpaho-mqttpp3 -lpaho-mqtt3as
-OBJFILES = sx1276.o main.o
+OBJFILES = sx1276.o main.o MQTTDataStreamer.o
 TARGET = dragino_lora_app
 
 all: $(TARGET)
