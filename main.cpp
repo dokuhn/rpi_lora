@@ -138,7 +138,6 @@ int main (int argc, char *argv[]) {
     // mutex object used to make the publishMessage() in MQTTDataStreamer
     // library thread safe.
     std::mutex mut;
-
     std::cout << "  ...OK" << endl;
 
     // cout << "\nConnecting..." << endl;
@@ -151,73 +150,72 @@ int main (int argc, char *argv[]) {
     // auto msg = mqtt::make_message(TOPIC, "Hallo Welt !!!");
     // msg->set_qos(QOS);
 
-    std::size_t buffer_len = TEST_MSG.size();
+    // std::size_t buffer_len = TEST_MSG.size();
 
-    std::string debug_info = "Sending messages ...";
+    // std::string debug_info = "Sending messages ...";
 
-    // wiringPiSetup () ;
-    // pinMode(sx1276Inst.ssPin, OUTPUT);
-    // pinMode(sx1276Inst.dio0, INPUT);
-    // pinMode(sx1276Inst.RST, OUTPUT);
+    wiringPiSetup () ;
+    pinMode(sx1276Inst.ssPin, OUTPUT);
+    pinMode(sx1276Inst.dio0, INPUT);
+    pinMode(sx1276Inst.RST, OUTPUT);
 
-    // wiringPiSPISetup(sx1276Inst.CHANNEL, 500000);
+    wiringPiSPISetup(sx1276Inst.CHANNEL, 500000);
 
-    // sx1276Inst.SetupLoRa();
+    sx1276Inst.SetupLoRa();
 
 
-    while(1) {
+    // while(1) {
             
-            streamer_obj->publishMessage(TEST_MSG.data(), buffer_len, 
-                        TOPIC, 1,  &mut, debug_info);
-            std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-    }
-
-
-    // if (!strcmp("sender", argv[1])) {
-    //     sx1276Inst.opmodeLora();
-    //     // enter standby mode (required for FIFO loading))
-    //     sx1276Inst.opmode(OPMODE_STANDBY);
-
-    //     sx1276Inst.writeReg(RegPaRamp, (sx1276Inst.readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
-
-    //     sx1276Inst.configPower(23);
-
-    //     std::printf("Send packets at SF%i on %.6lf Mhz.\n", sx1276Inst.sf, (double)sx1276Inst.freq/1000000);
-    //     std::cout << "------------------" << endl;
-	    
-    //     //if (argc > 2)
-    //     //    strncpy((char *)hello, argv[2], sizeof(hello));
-
-    //     // while( readline(STDIN_FILENO, line_buffer, sizeof(line_buffer)) > 1 ){
-        
-    //     while( 1 ){
-
-    //         // sx1276Inst.txlora((byte*)line_buffer, (byte)std::strlen(line_buffer));
-
-    //         std::this_thread::sleep_for(std::chrono::milliseconds(500) );
-    //     }
-
-    // } else {
-
-    //     // radio init
-    //     sx1276Inst.opmodeLora();
-    //     sx1276Inst.opmode(OPMODE_STANDBY);
-    //     sx1276Inst.opmode(OPMODE_RX);
-    //     std::printf("Listening at SF%i on %.6lf Mhz.\n", sx1276Inst.sf,(double)sx1276Inst.freq/1000000);
-    //     std::cout << "------------------" << endl;
-        
-	//     void (*fun_ptr2isr_handler)(void) = &isr_handler_wrapper;
-
-	//     wiringPiISR(sx1276Inst.dio0, INT_EDGE_RISING, fun_ptr2isr_handler);
-
-    //     while(1) {
-    //         // sx1276Inst.receivepacket();
-    //         streamer_obj->publishMessage(TEST_MSG, buffer_len, 
-    //                     TOPIC , 1, &mut, debug_info);
+    //         streamer_obj->publishMessage(TEST_MSG.data(), buffer_len, 
+    //                     TOPIC, 1,  &mut, debug_info);
     //         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-    //     }
-
     // }
+
+    sx1276Inst.init_streamer_obj(streamer_obj, &mut);
+
+    if (!strcmp("sender", argv[1])) {
+        sx1276Inst.opmodeLora();
+        // enter standby mode (required for FIFO loading))
+        sx1276Inst.opmode(OPMODE_STANDBY);
+
+        sx1276Inst.writeReg(RegPaRamp, (sx1276Inst.readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
+
+        sx1276Inst.configPower(23);
+
+        std::printf("Send packets at SF%i on %.6lf Mhz.\n", sx1276Inst.sf, (double)sx1276Inst.freq/1000000);
+        std::cout << "------------------" << endl;
+	    
+        //if (argc > 2)
+        //    strncpy((char *)hello, argv[2], sizeof(hello));
+
+        // while( readline(STDIN_FILENO, line_buffer, sizeof(line_buffer)) > 1 ){
+        
+        while( 1 ){
+
+            // sx1276Inst.txlora((byte*)line_buffer, (byte)std::strlen(line_buffer));
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(5000) );
+        }
+
+    } else {
+
+        // radio init
+        sx1276Inst.opmodeLora();
+        sx1276Inst.opmode(OPMODE_STANDBY);
+        sx1276Inst.opmode(OPMODE_RX);
+        std::printf("Listening at SF%i on %.6lf Mhz.\n", sx1276Inst.sf,(double)sx1276Inst.freq/1000000);
+        std::cout << "------------------" << endl;
+        
+	    void (*fun_ptr2isr_handler)(void) = &isr_handler_wrapper;
+
+	    wiringPiISR(sx1276Inst.dio0, INT_EDGE_RISING, fun_ptr2isr_handler);
+
+        while(1) {
+            // sx1276Inst.receivepacket();
+            std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        }
+
+    }
 
     return (0);
 }

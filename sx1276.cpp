@@ -218,7 +218,14 @@ const char* sx1276::receivepacket() {
             printf("Length: %i", (int)receivedbytes);
             printf("\n");
             printf("Payload: %s\n", message);
-	    fflush(stdout);
+	        fflush(stdout);
+
+            if( streamer_obj.get() != nullptr){
+                std::string debug_info = "Sending messages ...";
+                std::size_t payload_len = strlen(message);
+                streamer_obj->publishMessage( message, payload_len, 
+                            "/LoRA_Test/receivedPacket/", 1,  mut, debug_info);
+            }
 
 	    return (const char*)message;
 
@@ -300,5 +307,14 @@ void sx1276::isr_handler(void){
         writeReg(REG_IRQ_FLAGS, IRQ_LORA_TXDONE_MASK);
 
    }
+
+}
+
+void sx1276::init_streamer_obj(std::shared_ptr<MQTTDataStreamer> streamer_obj_, std::mutex* mut_){
+
+    streamer_obj = streamer_obj_;
+
+    mut = mut_;
+
 
 }

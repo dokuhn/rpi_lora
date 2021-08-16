@@ -22,6 +22,11 @@ extern "C" {
     # include <stdint.h>
 
 }
+
+
+#include <memory>
+
+#include "MQTTDataStreamer.hpp"
  
 // #############################################
 // #############################################
@@ -201,7 +206,9 @@ class sx1276 {
 
         void txlora(byte *frame, byte datalen);
 
-        void isr_handler(void);     
+        void isr_handler(void);
+
+        void init_streamer_obj(std::shared_ptr<MQTTDataStreamer> streamer_obj, std::mutex* mut);
 
 
     private:
@@ -213,6 +220,10 @@ class sx1276 {
         bool sx1272 = true;
 
         byte receivedbytes;
+
+        std::shared_ptr<MQTTDataStreamer> streamer_obj;
+
+        std::mutex *mut;
 
         /*******************************************************************************
         *

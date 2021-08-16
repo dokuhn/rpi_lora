@@ -1,5 +1,5 @@
 #ifndef MQTTDataStreamer_MQTTDATASTREAMER_HH
-#define MQTTDateStreamer_MQTTDATASTREAMER_HH
+#define MQTTDataStreamer_MQTTDATASTREAMER_HH
 
 #include <string>
 #include <mutex>
