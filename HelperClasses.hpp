@@ -13,10 +13,12 @@ public:
     std::atomic<bool> message_received = false;
     std::string name;
     uint8_t QoS;
+
+    mqtt::const_message_ptr msg;
     
     TopicsToHandle(const std::string& name_,
             uint8_t QoS_) : name(name_), QoS(QoS_) {}
-    virtual void processMessage() = 0;
+    virtual void processMessage(mqtt::const_message_ptr msg_) = 0;
 };
 
 /**
@@ -76,7 +78,7 @@ class MqttCallback : public virtual mqtt::callback {
             msg->get_topic() << "\n";
         for(const auto& topic : topics_to_handle) {
             if(topic->name == msg->get_topic())
-                topic->processMessage();
+                topic->processMessage(msg);
         }
     }
 	void delivery_complete(mqtt::delivery_token_ptr tok) override {
