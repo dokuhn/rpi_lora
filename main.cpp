@@ -1,10 +1,13 @@
-/*******************************************************************************
- *
+/**
+ * @file main.cpp
+ * @author Dominik Kuhn (dominik.kuhn90@googlemail.com)
+ * @brief 
+ * @version 0.1
+ * @date 2021-08-23
  * 
- *
+ * @copyright Copyright (c) 2021
  * 
- *
- *******************************************************************************/
+ */
 
 #include <iostream>
 #include <cstdlib>
@@ -31,7 +34,7 @@ extern "C" {
 
 using namespace std;
 
-const std::string DFLT_SERVER_ADDRESS	{ "tcp://troubadix:1883" };
+const std::string DFLT_SERVER_ADDRESS	{ "tcp://broker.hivemq.com:1883" };
 const std::string CLIENT_ID				{ "paho_cpp_async_publish" };
 const std::string PERSIST_DIR			{ "./persist" };
 
@@ -105,6 +108,9 @@ void handleTopics(std::shared_ptr<MQTTDataStreamer> streamer_obj,
             if(topic->name == "/LoRA_Test/transmitPacket/") {
                 if(topic->message_received){
                     std::cout << topic->msg->to_string() << std::endl;
+                    const char* msg = topic->msg->to_string().c_str();
+                    std::size_t msg_len = topic->msg->to_string().size();
+                    sx1276Inst.txlora( (unsigned char*)msg, (unsigned char)msg_len );
                     topic->message_received = false;
                 }
             }
@@ -163,6 +169,24 @@ int main (int argc, char *argv[]) {
 
     if (vm.count("sender")) {
 
+        std::cout << "Initializing and connecting for server '" << DFLT_SERVER_ADDRESS << "'..." << std::endl;
+
+        std::vector<std::shared_ptr<TopicsToHandle>> topics_to_handle;
+        topics_to_handle.push_back(std::make_shared<DataTransmitTopic>(
+                    "/LoRA_Test/transmitPacket/")); 
+
+        auto mqtt_async_client = std::make_shared<mqtt::async_client>(
+                DFLT_SERVER_ADDRESS, CLIENT_ID);
+
+        auto callback = std::make_shared<MqttCallback>
+                (mqtt_async_client, topics_to_handle);
+
+        auto streamer_obj = std::make_shared<MQTTDataStreamer>(
+                                std::make_tuple(mqtt_async_client, callback));
+
+        std::mutex mut;
+        std::cout << "  ...OK" << endl;
+
         wiringPiSetup () ;
         pinMode(sx1276Inst.ssPin, OUTPUT);
         pinMode(sx1276Inst.dio0, INPUT);
@@ -182,6 +206,9 @@ int main (int argc, char *argv[]) {
 
         std::printf("Send packets at SF%i on %.6lf Mhz.\n", sx1276Inst.sf, (double)sx1276Inst.freq/1000000);
         std::cout << "------------------" << endl;
+
+        
+        std::thread handleTopicsThread(handleTopics, streamer_obj, topics_to_handle, &mut);
 
         while( 1 ){
 

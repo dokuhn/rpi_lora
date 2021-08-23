@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_compile_options(-Wall -Wextra -pedantic -lstdc++)
+add_definitions(-DLMIC_SX1276)
 
 add_executable(dragino_lora_app main.cpp MQTTDataStreamer.cpp sx1276.cpp)
 
