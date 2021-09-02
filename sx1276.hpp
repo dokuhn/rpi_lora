@@ -184,6 +184,24 @@ class sx1276 {
         // Set center frequency
         uint32_t  freq = 868100000; // in Mhz! (868.1)
 
+
+        void init_radio(radio_events_t *events);
+
+        void radio_reset();
+
+        void set_operation_mode(uint8_t mode);
+
+        void set_modem(uint8_t modem);
+
+        void set_low_power_mode();
+
+        void set_antenna_switch(uint8_t mode);
+
+
+        // ################  old functions  ################ 
+        // vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
         void die(const char *s);
 
         void selectreceiver(void);

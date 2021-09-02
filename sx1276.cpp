@@ -24,7 +24,148 @@ extern "C" {
 
 #include "sx1276.hpp"
 
+/**
+ * Initializes radio module
+ */
+void sx1276::init_radio(radio_events_t *events)
+{
+    //_radio_events = events;
 
+    // Reset the radio transceiver
+    radio_reset();
+
+    // Setup radio variant type
+    //set_sx1276_variant_type();
+
+    // setup SPI frequency
+    // default is 8MHz although, configurable through
+    // SPI_FREQUENCY macro
+    //setup_spi();
+
+    // Calibrate radio receiver chain
+    //rx_chain_calibration();
+
+    // set radio mode to sleep
+    set_operation_mode(OPMODE_SLEEP);
+
+    // Setup radio registers to defaults
+    //setup_registers();
+
+    // set modem type - defaults to FSK here
+    set_modem(MODEM_FSK);
+
+    // set state to be idle
+    //_rf_settings.state = RF_IDLE;
+
+    // Setup interrupts on DIO pins
+    //setup_interrupts();
+}
+
+/**
+ * Can be used by application/stack or the driver itself
+ */
+void sx1276::radio_reset()
+{
+    _reset_ctl.output();
+    _reset_ctl = 0;
+    ThisThread::sleep_for(2);
+    _reset_ctl.input();
+    ThisThread::sleep_for(6);
+}
+
+
+/**
+ * Sets up operation mode
+ */
+void sx1276::set_operation_mode(uint8_t mode)
+{
+    if (mode == RF_OPMODE_SLEEP) {
+        set_low_power_mode();
+    } else {
+        set_low_power_mode();
+        set_antenna_switch(mode);
+    }
+
+    writeReg(REG_OPMODE, (readReg(REG_OPMODE) & ~OPMODE_MASK) | mode);
+
+}
+
+/**
+ * Sets the modem type to use
+ *
+ * At initialization FSK is chosen. Later stack or application
+ * can choose to change.
+ */
+void sx1276::set_modem(uint8_t modem)
+{
+
+
+   /*  if ((read_register(REG_OPMODE) & RFLR_OPMODE_LONGRANGEMODE_ON) != 0) {
+        _rf_settings.modem = MODEM_LORA;
+    } else {
+        _rf_settings.modem = MODEM_FSK;
+    }
+
+    if (_rf_settings.modem == modem) {
+        // if the modem is already set
+        return;
+    }
+
+    _rf_settings.modem = modem;
+
+    switch (_rf_settings.modem) {
+        default:
+        case MODEM_FSK:
+            // before changing modem mode, put the module to sleep
+            sleep();
+            write_to_register(REG_OPMODE, (read_register(REG_OPMODE) & RFLR_OPMODE_LONGRANGEMODE_MASK)
+                              | RFLR_OPMODE_LONGRANGEMODE_OFF);
+
+            // Datasheet Tables 28, 29 DIO mapping
+            write_to_register(REG_DIOMAPPING1, 0x00); // sets DIO0-DI03 in default mode
+            write_to_register(REG_DIOMAPPING2, 0x30); // bits 4-5 are turned on i.e.,
+            //  DIO5 and DIO4=ModeReady
+            break;
+        case MODEM_LORA:
+            sleep();
+            write_to_register(REG_OPMODE, (read_register(REG_OPMODE) & RFLR_OPMODE_LONGRANGEMODE_MASK)
+                              | RFLR_OPMODE_LONGRANGEMODE_ON);
+
+            // Datasheet Tables 17 DIO mapping for LoRa
+            // set to defaults
+            write_to_register(REG_DIOMAPPING1, 0x00); // DIO0 - DIO3 defaults
+            write_to_register(REG_DIOMAPPING2, 0x00); // DIO4 - DIO5 defaults
+
+            break;
+    } */
+}
+
+/**
+ * Sets the module in low power mode by disconnecting
+ * TX and RX submodules, turning off power amplifier etc.
+ */
+void sx1276::set_low_power_mode()
+{
+    // does nothing at the moment, functionality will be implemented later
+    for(i = 0; i < 10; ++i)
+	;
+}
+
+
+/**
+ * Sets up radio latch position according to the
+ * radio mode
+ */
+void sx1276::set_antenna_switch(uint8_t mode)
+{
+    // does nothing at the moment, functionality will be implemented later
+    for(i = 0; i < 10; ++i)
+	;
+}
+
+
+// #########################################################################################################################
+// #########################################################################################################################
 
 
 void sx1276::die(const char *s)
