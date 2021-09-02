@@ -34,7 +34,7 @@ extern "C" {
 
 using namespace std;
 
-const std::string DFLT_SERVER_ADDRESS	{ "tcp://broker.hivemq.com:1883" };
+const std::string DFLT_SERVER_ADDRESS	{ "tcp://troubadix:1883" };
 const std::string CLIENT_ID				{ "paho_cpp_async_publish" };
 const std::string PERSIST_DIR			{ "./persist" };
 
@@ -107,10 +107,7 @@ void handleTopics(std::shared_ptr<MQTTDataStreamer> streamer_obj,
         for(const auto& topic : topics_to_handle) {
             if(topic->name == "/LoRA_Test/transmitPacket/") {
                 if(topic->message_received){
-                    std::cout << topic->msg->to_string() << std::endl;
-                    const char* msg = topic->msg->to_string().c_str();
-                    std::size_t msg_len = topic->msg->to_string().size();
-                    sx1276Inst.txlora( (unsigned char*)msg, (unsigned char)msg_len );
+
                     topic->message_received = false;
                 }
             }
@@ -140,7 +137,15 @@ public:
     void processMessage(mqtt::const_message_ptr msg_) override {
         message_received = true;
 
-        msg = msg_;
+        std::size_t msg_len = msg_->to_string().size();
+        char * msg = new char[msg_len + 1];                    
+        std::strcpy (msg, msg_->to_string().c_str());
+
+        sx1276Inst.txlora( (unsigned char*)msg, (unsigned char)msg_len );
+
+
+
+
     }    
 };
 
@@ -152,6 +157,7 @@ int main (int argc, char *argv[]) {
         ("help", "produce help message")
         ("rec",  "setup receive mode")
         ("sender", "setup transmit mode")
+        ("half-duplex", "setup half-duplex mode")
     ;
 
 
@@ -262,8 +268,6 @@ int main (int argc, char *argv[]) {
 
 	    wiringPiISR(sx1276Inst.dio0, INT_EDGE_RISING, fun_ptr2isr_handler);
 
-        std::thread handleTopicsThread(handleTopics, streamer_obj, topics_to_handle, &mut);
-
 
         while(1) {
             // sx1276Inst.receivepacket();
@@ -272,6 +276,11 @@ int main (int argc, char *argv[]) {
 
 
 
+
+    } else if(vm.count("half-duplex")) {
+
+        std::cout << "half-duplex mode is not implemented yet" << std::endl;
+        return 0;
 
     } else {
         std::cout << "nothing setup" << std::endl;

@@ -13,8 +13,6 @@ public:
     std::atomic<bool> message_received = false;
     std::string name;
     uint8_t QoS;
-
-    mqtt::const_message_ptr msg;
     
     TopicsToHandle(const std::string& name_,
             uint8_t QoS_) : name(name_), QoS(QoS_) {}
