@@ -10,3 +10,30 @@ Maintainer: Dominik Kuhn <dominik.kuhn90@googlemail.com>
 
 - development of pseudo "half-duplex" receive and transmit functions
 - extension of the rudimentary program options with standardized linux like parameters like the logging-level, location of the log file etc.
+
+# Installation
+The following dependencies must be installed
+    1. paho-mqtt-c
+    2. paho-mqtt-cpp
+    3. wiring-pi 
+    4. boost-program-options
+ 
+## Installing paho-mqtt-c
+git clone https://github.com/eclipse/paho.mqtt.c.git
+cd paho.mqtt.c
+cmake -Bbuild -H. -DPAHO_ENABLE_TESTING=OFF -DPAHO_BUILD_STATIC=ON \
+        -DPAHO_WITH_SSL=ON -DPAHO_HIGH_PERFORMANCE=ON
+cmake --build build/ --target install
+ 
+## Installing paho-mqtt-cpp
+git clone https://github.com/eclipse/paho.mqtt.cpp
+cd paho.mqtt.cpp
+cmake -Bbuild -H. -DPAHO_BUILD_STATIC=ON \
+        -DPAHO_BUILD_DOCUMENTATION=TRUE -DPAHO_BUILD_SAMPLES=TRUE
+cmake --build build/ --target install
+ 
+## Installing wiring-pi
+sudo apt get install wiringpi
+ 
+## installing boost-program-options
+Needs input
