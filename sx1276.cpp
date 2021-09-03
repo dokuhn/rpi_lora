@@ -9,6 +9,8 @@
  * 
  */
 
+#include <thread>
+
 extern "C" {
     #include <stdio.h>
     #include <sys/types.h>
@@ -27,9 +29,8 @@ extern "C" {
 /**
  * Initializes radio module
  */
-void sx1276::init_radio(radio_events_t *events)
+void sx1276::init_radio()
 {
-    //_radio_events = events;
 
     // Reset the radio transceiver
     radio_reset();
@@ -66,11 +67,10 @@ void sx1276::init_radio(radio_events_t *events)
  */
 void sx1276::radio_reset()
 {
-    _reset_ctl.output();
-    _reset_ctl = 0;
-    ThisThread::sleep_for(2);
-    _reset_ctl.input();
-    ThisThread::sleep_for(6);
+    digitalWrite(RST, HIGH);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    digitalWrite(RST, LOW);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 
@@ -79,7 +79,7 @@ void sx1276::radio_reset()
  */
 void sx1276::set_operation_mode(uint8_t mode)
 {
-    if (mode == RF_OPMODE_SLEEP) {
+    if (mode == OPMODE_SLEEP) {
         set_low_power_mode();
     } else {
         set_low_power_mode();
@@ -96,24 +96,26 @@ void sx1276::set_operation_mode(uint8_t mode)
  * At initialization FSK is chosen. Later stack or application
  * can choose to change.
  */
-void sx1276::set_modem(uint8_t modem)
+void sx1276::set_modem(RadioModems_t modem)
 {
 
 
-   /*  if ((read_register(REG_OPMODE) & RFLR_OPMODE_LONGRANGEMODE_ON) != 0) {
-        _rf_settings.modem = MODEM_LORA;
+    if ((read_register(REG_OPMODE) & RFLR_OPMODE_LONGRANGEMODE_ON) != 0) {
+        _rf_settings.Modem = MODEM_LORA;
     } else {
-        _rf_settings.modem = MODEM_FSK;
+        _rf_settings.Modem = MODEM_FSK;
     }
 
-    if (_rf_settings.modem == modem) {
+    if (_rf_settings.Modem == modem) {
         // if the modem is already set
         return;
-    }
+    }    
 
-    _rf_settings.modem = modem;
+    _rf_settings.Modem = modem;
 
-    switch (_rf_settings.modem) {
+
+
+    switch (_rf_settings.Modem) {
         default:
         case MODEM_FSK:
             // before changing modem mode, put the module to sleep
@@ -137,7 +139,8 @@ void sx1276::set_modem(uint8_t modem)
             write_to_register(REG_DIOMAPPING2, 0x00); // DIO4 - DIO5 defaults
 
             break;
-    } */
+    }
+
 }
 
 /**
@@ -147,7 +150,7 @@ void sx1276::set_modem(uint8_t modem)
 void sx1276::set_low_power_mode()
 {
     // does nothing at the moment, functionality will be implemented later
-    for(i = 0; i < 10; ++i)
+    for(int i = 0; i < 10; ++i)
 	;
 }
 
@@ -159,9 +162,47 @@ void sx1276::set_low_power_mode()
 void sx1276::set_antenna_switch(uint8_t mode)
 {
     // does nothing at the moment, functionality will be implemented later
-    for(i = 0; i < 10; ++i)
+    for(int i = 0; i < 10; ++i)
 	;
 }
+
+unsigned char sx1276::read_register(unsigned char addr)
+{
+    unsigned char spibuf[2];
+
+    spibuf[0] = addr & 0x7F;
+    spibuf[1] = 0x00;
+    digitalWrite(ssPin, LOW);
+    wiringPiSPIDataRW(CHANNEL, spibuf, 2);
+
+    digitalWrite(ssPin, HIGH);
+
+    return spibuf[1];
+
+}
+
+void sx1276::write_to_register(unsigned char addr, unsigned char value)
+{
+    unsigned char spibuf[2];
+
+    spibuf[0] = addr | 0x80;
+    spibuf[1] = value;
+    digitalWrite(ssPin, LOW);
+    wiringPiSPIDataRW(CHANNEL, spibuf, 2);
+
+    digitalWrite(ssPin, HIGH);
+}
+
+
+void sx1276::sleep( void )
+{
+    // txTimeoutTimer.detach( );
+    // rxTimeoutTimer.detach( );
+ 
+    opmode( RF_OPMODE_SLEEP );
+    this->settings.State = RF_IDLE;
+}
+
 
 
 // #########################################################################################################################

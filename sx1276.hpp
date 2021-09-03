@@ -30,6 +30,11 @@ extern "C" {
 
 #include <memory>
 
+#include "enums.hpp"
+#include "sx1276_RegsFsk.hpp"
+#include "sx1276_RegsLoRa.hpp"
+
+
 #include "MQTTDataStreamer.hpp"
  
 // #############################################
@@ -185,17 +190,24 @@ class sx1276 {
         uint32_t  freq = 868100000; // in Mhz! (868.1)
 
 
-        void init_radio(radio_events_t *events);
+        void init_radio();
 
         void radio_reset();
 
         void set_operation_mode(uint8_t mode);
 
-        void set_modem(uint8_t modem);
+        void set_modem(RadioModems_t modem);
 
         void set_low_power_mode();
 
         void set_antenna_switch(uint8_t mode);
+
+        unsigned char read_register(unsigned char addr);
+
+        void write_to_register(unsigned char addr, unsigned char value);
+
+
+        void sleep( void );
 
 
         // ################  old functions  ################ 
@@ -234,7 +246,14 @@ class sx1276 {
 
 
     private:
+    
 
+        RadioSettings_t settings;
+
+
+        // Structure containing all user and network specified settings
+        // for radio module
+        RadioSettings_t _rf_settings;
        
 
         char message[256];
