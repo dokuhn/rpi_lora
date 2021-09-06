@@ -194,6 +194,12 @@ class sx1276 {
 
         void radio_reset();
 
+        uint8_t get_status(void);
+
+        void set_channel(uint32_t freq);
+
+        uint32_t random(void);
+
         void set_operation_mode(uint8_t mode);
 
         void set_modem(RadioModems_t modem);

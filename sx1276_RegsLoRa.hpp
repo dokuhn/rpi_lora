@@ -14,8 +14,20 @@ Maintainer: Miguel Luis and Gregory Cristian
 */
 #ifndef __SX1276_REGS_LORA_HPP__
 #define __SX1276_REGS_LORA_HPP__
- 
- 
+
+/*!
+ * ============================================================================
+ * SX1276 Internal registers Address
+ * ============================================================================
+ */
+
+
+#define REG_LR_IRQFLAGSMASK                         0x11
+#define REG_LR_IRQFLAGS                             0x12
+
+#define REG_LR_RSSIWIDEBAND                         0x2C
+
+
 /*!
  * ============================================================================
  * SX1276 LoRa bits control definition
@@ -51,7 +63,32 @@ Maintainer: Miguel Luis and Gregory Cristian
 // LoRa specific modes
 #define RFLR_OPMODE_RECEIVER_SINGLE                 0x06 
 #define RFLR_OPMODE_CAD                             0x07 
- 
+
+
+/*!
+ * RegIrqFlagsMask
+ */
+#define RFLR_IRQFLAGS_RXTIMEOUT_MASK                0x80
+#define RFLR_IRQFLAGS_RXDONE_MASK                   0x40
+#define RFLR_IRQFLAGS_PAYLOADCRCERROR_MASK          0x20
+#define RFLR_IRQFLAGS_VALIDHEADER_MASK              0x10
+#define RFLR_IRQFLAGS_TXDONE_MASK                   0x08
+#define RFLR_IRQFLAGS_CADDONE_MASK                  0x04
+#define RFLR_IRQFLAGS_FHSSCHANGEDCHANNEL_MASK       0x02
+#define RFLR_IRQFLAGS_CADDETECTED_MASK              0x01
+
+/*!
+ * RegIrqFlags
+ */
+#define RFLR_IRQFLAGS_RXTIMEOUT                     0x80
+#define RFLR_IRQFLAGS_RXDONE                        0x40
+#define RFLR_IRQFLAGS_PAYLOADCRCERROR               0x20
+#define RFLR_IRQFLAGS_VALIDHEADER                   0x10
+#define RFLR_IRQFLAGS_TXDONE                        0x08
+#define RFLR_IRQFLAGS_CADDONE                       0x04
+#define RFLR_IRQFLAGS_FHSSCHANGEDCHANNEL            0x02
+#define RFLR_IRQFLAGS_CADDETECTED                   0x01
+
 
 
 #endif // __SX1276_REGS_LORA_HPP__

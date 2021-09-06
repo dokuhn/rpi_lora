@@ -26,6 +26,19 @@ extern "C" {
 
 #include "sx1276.hpp"
 
+/*!
+ * Sync word for Public LoRa networks
+ */
+#define LORA_MAC_PUBLIC_SYNCWORD                    0x34
+
+/*!
+ * SX1276 definitions
+ */
+#define XTAL_FREQ                                   32000000
+#define FREQ_STEP                                   61.03515625
+
+
+
 /**
  * Initializes radio module
  */
@@ -56,7 +69,7 @@ void sx1276::init_radio()
     set_modem(MODEM_FSK);
 
     // set state to be idle
-    //_rf_settings.state = RF_IDLE;
+    _rf_settings.State = RF_IDLE;
 
     // Setup interrupts on DIO pins
     //setup_interrupts();
@@ -72,6 +85,72 @@ void sx1276::radio_reset()
     digitalWrite(RST, LOW);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
+
+/**
+ * Returns current status of the radio state machine
+ */
+uint8_t sx1276::get_status(void)
+{
+    return _rf_settings.State;
+}
+
+/**
+ * Sets up carrier frequency
+ */
+void sx1276::set_channel(uint32_t freq)
+{
+    _rf_settings.Channel = freq;
+    freq = (uint32_t)((float) freq / (float) FREQ_STEP);
+    write_to_register(REG_FRFMSB, (uint8_t)((freq >> 16) & 0xFF));
+    write_to_register(REG_FRFMID, (uint8_t)((freq >> 8) & 0xFF));
+    write_to_register(REG_FRFLSB, (uint8_t)(freq & 0xFF));
+}
+
+/**
+ * Generates 32 bit random number based upon RSSI monitoring
+ * Used for various calculation by the stack for example dev nonce
+ *
+ * When this API is used modem is set in LoRa mode and all interrupts are
+ * masked. If the user had been using FSK mode, it should be noted that a
+ * change of mode is required again because the registers have changed.
+ * In addition to that RX and TX configuration APIs should be called again in
+ * order to have correct desires setup.
+ */
+uint32_t sx1276::random(void)
+{
+    uint8_t i;
+    uint32_t rnd = 0;
+
+    /*
+     * Radio setup for random number generation
+     */
+    set_modem(MODEM_LORA);
+
+    // Disable LoRa modem interrupts
+    write_to_register(REG_LR_IRQFLAGSMASK, RFLR_IRQFLAGS_RXTIMEOUT |
+                      RFLR_IRQFLAGS_RXDONE |
+                      RFLR_IRQFLAGS_PAYLOADCRCERROR |
+                      RFLR_IRQFLAGS_VALIDHEADER |
+                      RFLR_IRQFLAGS_TXDONE |
+                      RFLR_IRQFLAGS_CADDONE |
+                      RFLR_IRQFLAGS_FHSSCHANGEDCHANNEL |
+                      RFLR_IRQFLAGS_CADDETECTED);
+
+    // Set radio in continuous reception
+    set_operation_mode(RF_OPMODE_RECEIVER);
+
+    for (i = 0; i < 32; i++) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        // Unfiltered RSSI value reading. Only takes the LSB value
+        rnd |= ((uint32_t) read_register(REG_LR_RSSIWIDEBAND) & 0x01) << i;
+    }
+
+    sleep();
+
+    return rnd;
+}
+
+
 
 
 /**
@@ -198,11 +277,12 @@ void sx1276::sleep( void )
 {
     // txTimeoutTimer.detach( );
     // rxTimeoutTimer.detach( );
- 
+    
     opmode( RF_OPMODE_SLEEP );
     this->settings.State = RF_IDLE;
 }
 
+ 
 
 
 // #########################################################################################################################
