@@ -27,6 +27,11 @@ extern "C" {
 #include "sx1276.hpp"
 
 /*!
+ * Sync word for Private LoRa networks
+ */
+#define LORA_MAC_PRIVATE_SYNCWORD                   0x12
+
+/*!
  * Sync word for Public LoRa networks
  */
 #define LORA_MAC_PUBLIC_SYNCWORD                    0x34
@@ -37,7 +42,55 @@ extern "C" {
 #define XTAL_FREQ                                   32000000
 #define FREQ_STEP                                   61.03515625
 
+/*!
+ * Constant values need to compute the RSSI value
+ */
+#define RSSI_OFFSET_LF                              -164.0
+#define RSSI_OFFSET_HF                              -157.0
+#define RF_MID_BAND_THRESH                          525000000
 
+
+/*!
+ * FSK bandwidth definition
+ */
+typedef struct {
+    uint32_t bandwidth;
+    uint8_t  register_value;
+} fsk_bw_t;
+
+/*!
+ * Radio registers definition
+ */
+typedef struct {
+    uint8_t     modem;
+    uint8_t     addr;
+    uint8_t     value;
+} radio_registers_t;
+
+static const fsk_bw_t fsk_bandwidths[] = {
+    { 2600, 0x17 },
+    { 3100, 0x0F },
+    { 3900, 0x07 },
+    { 5200, 0x16 },
+    { 6300, 0x0E },
+    { 7800, 0x06 },
+    { 10400, 0x15 },
+    { 12500, 0x0D },
+    { 15600, 0x05 },
+    { 20800, 0x14 },
+    { 25000, 0x0C },
+    { 31300, 0x04 },
+    { 41700, 0x13 },
+    { 50000, 0x0B },
+    { 62500, 0x03 },
+    { 83333, 0x12 },
+    { 100000, 0x0A },
+    { 125000, 0x02 },
+    { 166700, 0x11 },
+    { 200000, 0x09 },
+    { 250000, 0x01 },
+    { 300000, 0x00 }, // Invalid bandwidth
+};
 
 /**
  * Initializes radio module
@@ -150,7 +203,170 @@ uint32_t sx1276::random(void)
     return rnd;
 }
 
+/**
+ * Sets up receiver related configurations
+ *
+ * Must be called before setting the radio in rx mode
+ */
+void sx1276::set_rx_config(RadioModems_t modem, uint32_t bandwidth,
+                            uint32_t datarate, uint8_t coderate,
+                            uint32_t bandwidth_afc,
+                            uint16_t preamble_len,
+                            uint16_t symb_timeout, bool fix_len,
+                            uint8_t payload_len, bool crc_on,
+                            bool freq_hop_on, uint8_t hop_period,
+                            bool iq_inverted, bool rx_continuous)
+{
+    set_modem(modem);
 
+    switch (modem) {
+        case MODEM_FSK:
+            _rf_settings.Fsk.Bandwidth = bandwidth;
+            _rf_settings.Fsk.Datarate = datarate;
+            _rf_settings.Fsk.BandwidthAfc = bandwidth_afc;
+            _rf_settings.Fsk.FixLen = fix_len;
+            _rf_settings.Fsk.PayloadLen = payload_len;
+            _rf_settings.Fsk.CrcOn = crc_on;
+            _rf_settings.Fsk.IqInverted = iq_inverted;
+            _rf_settings.Fsk.RxContinuous = rx_continuous;
+            _rf_settings.Fsk.PreambleLen = preamble_len;
+            _rf_settings.Fsk.RxSingleTimeout = (symb_timeout + 1) / 2; // dividing by 2 as our detector size is 2 symbols (16 bytes)
+
+            datarate = (uint16_t)((float) XTAL_FREQ / (float) datarate);
+            write_to_register(REG_BITRATEMSB, (uint8_t)(datarate >> 8));
+            write_to_register(REG_BITRATELSB, (uint8_t)(datarate & 0xFF));
+
+            write_to_register(REG_RXBW, get_fsk_bw_reg_val(bandwidth));
+            write_to_register(REG_AFCBW, get_fsk_bw_reg_val(bandwidth_afc));
+
+            write_to_register(REG_PREAMBLEMSB, (uint8_t)((preamble_len >> 8) & 0xFF));
+            write_to_register(REG_PREAMBLELSB, (uint8_t)(preamble_len & 0xFF));
+
+            if (fix_len == 1) {
+                write_to_register(REG_PAYLOADLENGTH, payload_len);
+            } else {
+                write_to_register(REG_PAYLOADLENGTH, 0xFF); // Set payload length to the maximum
+            }
+
+            write_to_register(
+                REG_PACKETCONFIG1,
+                (read_register(REG_PACKETCONFIG1)
+                 & RF_PACKETCONFIG1_CRC_MASK
+                 & RF_PACKETCONFIG1_PACKETFORMAT_MASK)
+                | ((fix_len == 1) ?
+                   RF_PACKETCONFIG1_PACKETFORMAT_FIXED :
+                   RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE)
+                | (crc_on << 4));
+
+            // TODO why packet mode 2 ?
+            write_to_register(REG_PACKETCONFIG2, (read_register(REG_PACKETCONFIG2)
+                                                  | RF_PACKETCONFIG2_DATAMODE_PACKET));
+
+            break;
+
+        case MODEM_LORA:
+
+            if (bandwidth > 2) {
+                // Fatal error: When using LoRa modem only bandwidths 125, 250 and 500 kHz are supported
+                while (1)
+                    ;
+                // TODO Return a proper error from here
+            }
+
+            // stupid hack. TODO think something better
+            bandwidth += 7;
+
+            _rf_settings.LoRa.Bandwidth = bandwidth;
+            _rf_settings.LoRa.Datarate = datarate;
+            _rf_settings.LoRa.Coderate = coderate;
+            _rf_settings.LoRa.PreambleLen = preamble_len;
+            _rf_settings.LoRa.FixLen = fix_len;
+            _rf_settings.LoRa.PayloadLen = payload_len;
+            _rf_settings.LoRa.CrcOn = crc_on;
+            _rf_settings.LoRa.FreqHopOn = freq_hop_on;
+            _rf_settings.LoRa.HopPeriod = hop_period;
+            _rf_settings.LoRa.IqInverted = iq_inverted;
+            _rf_settings.LoRa.RxContinuous = rx_continuous;
+
+            if (datarate > 12) {
+                datarate = 12;
+            } else if (datarate < 6) {
+                datarate = 6;
+            }
+
+            if (((bandwidth == 7) && ((datarate == 11) || (datarate == 12)))
+                    || ((bandwidth == 8) && (datarate == 12))) {
+                _rf_settings.LoRa.LowDatarateOptimize = 0x01;
+            } else {
+                _rf_settings.LoRa.LowDatarateOptimize = 0x00;
+            }
+
+            write_to_register(REG_LR_MODEMCONFIG1, (read_register(REG_LR_MODEMCONFIG1)
+                                                    & RFLR_MODEMCONFIG1_BW_MASK
+                                                    & RFLR_MODEMCONFIG1_CODINGRATE_MASK
+                                                    & RFLR_MODEMCONFIG1_IMPLICITHEADER_MASK)
+                              | (bandwidth << 4)
+                              | (coderate << 1) | fix_len);
+
+            write_to_register(REG_LR_MODEMCONFIG2, (read_register(REG_LR_MODEMCONFIG2)
+                                                    & RFLR_MODEMCONFIG2_SF_MASK
+                                                    & RFLR_MODEMCONFIG2_RXPAYLOADCRC_MASK
+                                                    & RFLR_MODEMCONFIG2_SYMBTIMEOUTMSB_MASK)
+                              | (datarate << 4)
+                              | (crc_on << 2)
+                              | ((symb_timeout >> 8)
+                                 & ~RFLR_MODEMCONFIG2_SYMBTIMEOUTMSB_MASK));
+
+            write_to_register(REG_LR_MODEMCONFIG3, (read_register(REG_LR_MODEMCONFIG3)
+                                                    & RFLR_MODEMCONFIG3_LOWDATARATEOPTIMIZE_MASK)
+                              | (_rf_settings.LoRa.LowDatarateOptimize << 3));
+
+            write_to_register(REG_LR_SYMBTIMEOUTLSB, (uint8_t)(symb_timeout & 0xFF));
+
+            write_to_register(REG_LR_PREAMBLEMSB, (uint8_t)((preamble_len >> 8) & 0xFF));
+            write_to_register(REG_LR_PREAMBLELSB, (uint8_t)(preamble_len & 0xFF));
+
+            if (fix_len == 1) {
+                write_to_register(REG_LR_PAYLOADLENGTH, payload_len);
+            }
+
+            if (_rf_settings.LoRa.FreqHopOn == true) {
+                write_to_register(REG_LR_PLLHOP, (read_register(REG_LR_PLLHOP)
+                                                  & RFLR_PLLHOP_FASTHOP_MASK)
+                                  | RFLR_PLLHOP_FASTHOP_ON);
+                write_to_register(REG_LR_HOPPERIOD, _rf_settings.LoRa.HopPeriod);
+            }
+
+            if ((bandwidth == 9) && (_rf_settings.Channel > RF_MID_BAND_THRESH)) {
+                // ERRATA 2.1 - Sensitivity Optimization with a 500 kHz Bandwidth
+                write_to_register(REG_LR_TEST36, 0x02);
+                write_to_register(REG_LR_TEST3A, 0x64);
+            } else if (bandwidth == 9) {
+                // ERRATA 2.1 - Sensitivity Optimization with a 500 kHz Bandwidth
+                write_to_register(REG_LR_TEST36, 0x02);
+                write_to_register(REG_LR_TEST3A, 0x7F);
+            } else {
+                // ERRATA 2.1 - Sensitivity Optimization with a 500 kHz Bandwidth
+                write_to_register(REG_LR_TEST36, 0x03);
+            }
+
+            if (datarate == 6) {
+                write_to_register(REG_LR_DETECTOPTIMIZE, (read_register(REG_LR_DETECTOPTIMIZE)
+                                                          & RFLR_DETECTIONOPTIMIZE_MASK)
+                                  | RFLR_DETECTIONOPTIMIZE_SF6);
+                write_to_register(REG_LR_DETECTIONTHRESHOLD, RFLR_DETECTIONTHRESH_SF6);
+            } else {
+                write_to_register(REG_LR_DETECTOPTIMIZE, (read_register(REG_LR_DETECTOPTIMIZE)
+                                                          & RFLR_DETECTIONOPTIMIZE_MASK)
+                                  | RFLR_DETECTIONOPTIMIZE_SF7_TO_SF12);
+                write_to_register(REG_LR_DETECTIONTHRESHOLD, RFLR_DETECTIONTHRESH_SF7_TO_SF12);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
 
 
 /**
@@ -220,6 +436,27 @@ void sx1276::set_modem(RadioModems_t modem)
             break;
     }
 
+}
+
+/**
+ * Gets FSK bandwidth values
+ *
+ * Gives either normal bandwidths or bandwidths for
+ * AFC (auto frequency correction)
+ */
+uint8_t sx1276::get_fsk_bw_reg_val(uint32_t bandwidth)
+{
+    uint8_t i;
+
+    for (i = 0; i < (sizeof(fsk_bandwidths) / sizeof(fsk_bw_t)) - 1; i++) {
+        if ((bandwidth >= fsk_bandwidths[i].bandwidth)
+                && (bandwidth < fsk_bandwidths[i + 1].bandwidth)) {
+            return fsk_bandwidths[i].register_value;
+        }
+    }
+    // ERROR: Value not found
+    // This should never happen
+    while (1);
 }
 
 /**

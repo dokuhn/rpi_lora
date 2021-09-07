@@ -200,9 +200,21 @@ class sx1276 {
 
         uint32_t random(void);
 
+        void set_rx_config(RadioModems_t modem, uint32_t bandwidth,
+                            uint32_t datarate, uint8_t coderate,
+                            uint32_t bandwidth_afc,
+                            uint16_t preamble_len,
+                            uint16_t symb_timeout, bool fix_len,
+                            uint8_t payload_len, bool crc_on,
+                            bool freq_hop_on, uint8_t hop_period,
+                            bool iq_inverted, bool rx_continuous);
+
+
         void set_operation_mode(uint8_t mode);
 
         void set_modem(RadioModems_t modem);
+
+        uint8_t get_fsk_bw_reg_val(uint32_t bandwidth);
 
         void set_low_power_mode();
 
