@@ -34,7 +34,7 @@ extern "C" {
 
 using namespace std;
 
-const std::string DFLT_SERVER_ADDRESS	{ "tcp://troubadix:1883" };
+const std::string DFLT_SERVER_ADDRESS	{ "tcp://broker.hivemq.com:1883" };
 const std::string CLIENT_ID				{ "paho_cpp_async_publish" };
 const std::string PERSIST_DIR			{ "./persist" };
 
@@ -105,7 +105,7 @@ void handleTopics(std::shared_ptr<MQTTDataStreamer> streamer_obj,
      */
     while(true) {
         for(const auto& topic : topics_to_handle) {
-            if(topic->name == "/LoRA_Test/transmitPacket/") {
+            if(topic->name == "/LoRa_test/transmitPacket/") {
                 if(topic->message_received){
 
                     topic->message_received = false;
@@ -179,7 +179,7 @@ int main (int argc, char *argv[]) {
 
         std::vector<std::shared_ptr<TopicsToHandle>> topics_to_handle;
         topics_to_handle.push_back(std::make_shared<DataTransmitTopic>(
-                    "/LoRA_Test/transmitPacket/")); 
+                    "/LoRa_test/transmitPacket/")); 
 
         auto mqtt_async_client = std::make_shared<mqtt::async_client>(
                 DFLT_SERVER_ADDRESS, CLIENT_ID);
@@ -232,7 +232,7 @@ int main (int argc, char *argv[]) {
 
         std::vector<std::shared_ptr<TopicsToHandle>> topics_to_handle;
         topics_to_handle.push_back(std::make_shared<DataTransmitTopic>(
-                    "/LoRA_Test/transmitPacket/")); 
+                    "/LoRa_test/transmitPacket/")); 
 
         auto mqtt_async_client = std::make_shared<mqtt::async_client>(
                 DFLT_SERVER_ADDRESS, CLIENT_ID);

@@ -10,6 +10,8 @@
  */
 
 #include <thread>
+#include <cassert>
+#include <cmath>
 
 extern "C" {
     #include <stdio.h>
@@ -368,6 +370,295 @@ void sx1276::set_rx_config(RadioModems_t modem, uint32_t bandwidth,
     }
 }
 
+/**
+ * Sets up transmitter related configuration
+ *
+ * Must be called before putting the radio module in Tx mode or trying
+ * to send
+ */
+void sx1276::set_tx_config(RadioModems_t modem, int8_t power,
+                                     uint32_t fdev, uint32_t bandwidth,
+                                     uint32_t datarate, uint8_t coderate,
+                                     uint16_t preamble_len, bool fix_len,
+                                     bool crc_on, bool freq_hop_on,
+                                     uint8_t hop_period, bool iq_inverted,
+                                     uint32_t timeout)
+{
+    set_modem(modem);
+    set_rf_tx_power(power);
+
+    switch (modem) {
+        case MODEM_FSK:
+            _rf_settings.Fsk.Power = power;
+            _rf_settings.Fsk.Fdev = fdev;
+            _rf_settings.Fsk.Bandwidth = bandwidth;
+            _rf_settings.Fsk.Datarate = datarate;
+            _rf_settings.Fsk.PreambleLen = preamble_len;
+            _rf_settings.Fsk.FixLen = fix_len;
+            _rf_settings.Fsk.CrcOn = crc_on;
+            _rf_settings.Fsk.IqInverted = iq_inverted;
+            _rf_settings.Fsk.TxTimeout = timeout;
+
+            fdev = (uint16_t)((float) fdev / (float) FREQ_STEP);
+            write_to_register(REG_FDEVMSB, (uint8_t)(fdev >> 8));
+            write_to_register(REG_FDEVLSB, (uint8_t)(fdev & 0xFF));
+
+            datarate = (uint16_t)((float) XTAL_FREQ / (float) datarate);
+            write_to_register(REG_BITRATEMSB, (uint8_t)(datarate >> 8));
+            write_to_register(REG_BITRATELSB, (uint8_t)(datarate & 0xFF));
+
+            write_to_register(REG_PREAMBLEMSB, (preamble_len >> 8) & 0x00FF);
+            write_to_register(REG_PREAMBLELSB, preamble_len & 0xFF);
+
+            write_to_register(REG_PACKETCONFIG1,
+                              (read_register(REG_PACKETCONFIG1) &
+                               RF_PACKETCONFIG1_CRC_MASK &
+                               RF_PACKETCONFIG1_PACKETFORMAT_MASK)
+                              | ((fix_len == 1) ?
+                                 RF_PACKETCONFIG1_PACKETFORMAT_FIXED :
+                                 RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE)
+                              | (crc_on << 4));
+            write_to_register(REG_PACKETCONFIG2,
+                              (read_register(REG_PACKETCONFIG2)
+                               | RF_PACKETCONFIG2_DATAMODE_PACKET));
+
+            break;
+
+        case MODEM_LORA:
+            _rf_settings.LoRa.Power = power;
+            // Fatal error: When using LoRa modem only bandwidths 125, 250 and 500 kHz are supported
+            assert(bandwidth <= 2);
+            bandwidth += 7;
+            _rf_settings.LoRa.Bandwidth = bandwidth;
+            _rf_settings.LoRa.Datarate = datarate;
+            _rf_settings.LoRa.Coderate = coderate;
+            _rf_settings.LoRa.PreambleLen = preamble_len;
+            _rf_settings.LoRa.FixLen = fix_len;
+            _rf_settings.LoRa.FreqHopOn = freq_hop_on;
+            _rf_settings.LoRa.HopPeriod = hop_period;
+            _rf_settings.LoRa.CrcOn = crc_on;
+            _rf_settings.LoRa.IqInverted = iq_inverted;
+            _rf_settings.LoRa.TxTimeout = timeout;
+
+            if (datarate > 12) {
+                datarate = 12;
+            } else if (datarate < 6) {
+                datarate = 6;
+            }
+            if (((bandwidth == 7) && ((datarate == 11) || (datarate == 12)))
+                    || ((bandwidth == 8) && (datarate == 12))) {
+                _rf_settings.LoRa.LowDatarateOptimize = 0x01;
+            } else {
+                _rf_settings.LoRa.LowDatarateOptimize = 0x00;
+            }
+
+            if (_rf_settings.LoRa.FreqHopOn == true) {
+                write_to_register(REG_LR_PLLHOP, (read_register(REG_LR_PLLHOP)
+                                                  & RFLR_PLLHOP_FASTHOP_MASK)
+                                  | RFLR_PLLHOP_FASTHOP_ON);
+                write_to_register(REG_LR_HOPPERIOD, _rf_settings.LoRa.HopPeriod);
+            }
+
+            write_to_register(REG_LR_MODEMCONFIG1, (read_register(REG_LR_MODEMCONFIG1)
+                                                    & RFLR_MODEMCONFIG1_BW_MASK
+                                                    & RFLR_MODEMCONFIG1_CODINGRATE_MASK
+                                                    & RFLR_MODEMCONFIG1_IMPLICITHEADER_MASK) | (bandwidth << 4)
+                              | (coderate << 1) | fix_len);
+
+            write_to_register(REG_LR_MODEMCONFIG2, (read_register(REG_LR_MODEMCONFIG2)
+                                                    & RFLR_MODEMCONFIG2_SF_MASK
+                                                    & RFLR_MODEMCONFIG2_RXPAYLOADCRC_MASK)
+                              | (datarate << 4)
+                              | (crc_on << 2));
+
+            write_to_register(REG_LR_MODEMCONFIG3, (read_register(REG_LR_MODEMCONFIG3)
+                                                    & RFLR_MODEMCONFIG3_LOWDATARATEOPTIMIZE_MASK)
+                              | (_rf_settings.LoRa.LowDatarateOptimize << 3));
+
+            write_to_register(REG_LR_PREAMBLEMSB, (preamble_len >> 8) & 0x00FF);
+            write_to_register(REG_LR_PREAMBLELSB, preamble_len & 0xFF);
+
+            if (datarate == 6) {
+                write_to_register(REG_LR_DETECTOPTIMIZE, (read_register(REG_LR_DETECTOPTIMIZE)
+                                                          & RFLR_DETECTIONOPTIMIZE_MASK) | RFLR_DETECTIONOPTIMIZE_SF6);
+                write_to_register(REG_LR_DETECTIONTHRESHOLD, RFLR_DETECTIONTHRESH_SF6);
+            } else {
+                write_to_register(REG_LR_DETECTOPTIMIZE, (read_register(REG_LR_DETECTOPTIMIZE)
+                                                          & RFLR_DETECTIONOPTIMIZE_MASK) | RFLR_DETECTIONOPTIMIZE_SF7_TO_SF12);
+                write_to_register(REG_LR_DETECTIONTHRESHOLD, RFLR_DETECTIONTHRESH_SF7_TO_SF12);
+            }
+
+            break;
+    }
+}
+
+/**
+ * Calculates time on Air i.e., dwell time for a single packet
+ *
+ * Crucial for the stack in order to calculate dwell time so as to control
+ * duty cycling.
+ */
+uint32_t sx1276::time_on_air(RadioModems_t modem, uint8_t pkt_len)
+{
+    uint32_t airTime = 0;
+
+    switch (modem) {
+        case MODEM_FSK:
+            airTime =
+                std::rint((8 * (_rf_settings.Fsk.PreambleLen
+                            + ((read_register(REG_SYNCCONFIG)
+                                & ~RF_SYNCCONFIG_SYNCSIZE_MASK) + 1)
+                            + ((_rf_settings.Fsk.FixLen == 0x01) ?
+                                0.0f : 1.0f)
+                            + (((read_register(REG_PACKETCONFIG1)
+                                    & ~RF_PACKETCONFIG1_ADDRSFILTERING_MASK)
+                                != 0x00) ? 1.0f : 0) + pkt_len
+                            + ((_rf_settings.Fsk.CrcOn == 0x01) ?
+                                2.0 : 0))
+                        / _rf_settings.Fsk.Datarate) * 1000);
+
+            break;
+        case MODEM_LORA:
+            float bw = 0.0f;
+            // REMARK: When using LoRa modem only bandwidths 125, 250 and 500 kHz are supported
+            switch (_rf_settings.LoRa.Bandwidth) {
+                //case 0: // 7.8 kHz
+                //    bw = 78e2;
+                //    break;
+                //case 1: // 10.4 kHz
+                //    bw = 104e2;
+                //    break;
+                //case 2: // 15.6 kHz
+                //    bw = 156e2;
+                //    break;
+                //case 3: // 20.8 kHz
+                //    bw = 208e2;
+                //    break;
+                //case 4: // 31.2 kHz
+                //    bw = 312e2;
+                //    break;
+                //case 5: // 41.4 kHz
+                //    bw = 414e2;
+                //    break;
+                //case 6: // 62.5 kHz
+                //    bw = 625e2;
+                //    break;
+                case 7: // 125 kHz
+                    bw = 125000;
+                    break;
+                case 8: // 250 kHz
+                    bw = 250000;
+                    break;
+                case 9: // 500 kHz
+                    bw = 500000;
+                    break;
+            }
+
+            // Symbol rate : time for one symbol (secs)
+            float rs = bw / (1 << _rf_settings.LoRa.Datarate);
+            float ts = 1 / rs;
+            // time of preamble
+            float tPreamble = (_rf_settings.LoRa.PreambleLen + 4.25f) * ts;
+            // Symbol length of payload and time
+            float tmp = std::ceil((8 * pkt_len - 4 * _rf_settings.LoRa.Datarate + 28
+                                + 16 * _rf_settings.LoRa.CrcOn
+                                - (_rf_settings.LoRa.FixLen ? 20 : 0))
+                                / (float)(4
+                                        * (_rf_settings.LoRa.Datarate
+                                            - ((_rf_settings.LoRa.LowDatarateOptimize > 0)
+                                                ? 2 : 0))))
+                            * (_rf_settings.LoRa.Coderate + 4);
+            float nPayload = 8 + ((tmp > 0) ? tmp : 0);
+            float tPayload = nPayload * ts;
+            // Time on air
+            float tOnAir = tPreamble + tPayload;
+            // return ms secs
+            airTime = std::floor(tOnAir * 1000 + 0.999f);
+
+            break;
+    }
+
+    return airTime;
+}
+
+/**
+ * Prepares and sends the radio packet out in the air
+ */
+void sx1276::send(uint8_t *buffer, uint8_t size)
+{
+    uint32_t tx_timeout = 0;
+
+    switch (_rf_settings.Modem) {
+        case MODEM_FSK:
+            _rf_settings.FskPacketHandler.NbBytes = 0;
+            _rf_settings.FskPacketHandler.Size = size;
+
+            if (_rf_settings.Fsk.FixLen == false) {
+                write_fifo((uint8_t *) &size, 1);
+            } else {
+                write_to_register(REG_PAYLOADLENGTH, size);
+            }
+
+            if ((size > 0) && (size <= 64)) {
+                _rf_settings.FskPacketHandler.ChunkSize = size;
+            } else {
+                std::memcpy(_data_buffer, buffer, size);
+                _rf_settings.FskPacketHandler.ChunkSize = 32;
+            }
+
+            // Write payload buffer
+            write_fifo(buffer, _rf_settings.FskPacketHandler.ChunkSize);
+            _rf_settings.FskPacketHandler.NbBytes +=
+                _rf_settings.FskPacketHandler.ChunkSize;
+            tx_timeout = _rf_settings.Fsk.TxTimeout;
+
+            break;
+
+        case MODEM_LORA:
+            if (_rf_settings.LoRa.IqInverted == true) {
+                write_to_register(REG_LR_INVERTIQ, ((read_register(REG_LR_INVERTIQ)
+                                                     & RFLR_INVERTIQ_TX_MASK
+                                                     & RFLR_INVERTIQ_RX_MASK)
+                                                    | RFLR_INVERTIQ_RX_OFF
+                                                    | RFLR_INVERTIQ_TX_ON));
+                write_to_register(REG_LR_INVERTIQ2, RFLR_INVERTIQ2_ON);
+            } else {
+                write_to_register(REG_LR_INVERTIQ, ((read_register(REG_LR_INVERTIQ)
+                                                     & RFLR_INVERTIQ_TX_MASK
+                                                     & RFLR_INVERTIQ_RX_MASK)
+                                                    | RFLR_INVERTIQ_RX_OFF
+                                                    | RFLR_INVERTIQ_TX_OFF));
+                write_to_register(REG_LR_INVERTIQ2, RFLR_INVERTIQ2_OFF);
+            }
+
+            _rf_settings.LoRaPacketHandler.Size = size;
+
+            // Initializes the payload size
+            write_to_register(REG_LR_PAYLOADLENGTH, size);
+
+            // Full buffer used for Tx
+            write_to_register(REG_LR_FIFOTXBASEADDR, 0);
+            write_to_register(REG_LR_FIFOADDRPTR, 0);
+
+            // FIFO operations can not take place in Sleep mode
+            if ((read_register(REG_OPMODE) & ~RF_OPMODE_MASK) == RF_OPMODE_SLEEP) {
+                standby();
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            // write_to_register payload buffer
+            write_fifo(buffer, size);
+            tx_timeout = _rf_settings.LoRa.TxTimeout;
+
+            break;
+    }
+
+    transmit(tx_timeout);
+}
+
+
+
+
+
 
 /**
  * Sets up operation mode
@@ -459,6 +750,157 @@ uint8_t sx1276::get_fsk_bw_reg_val(uint32_t bandwidth)
     while (1);
 }
 
+
+uint8_t sx1276::get_pa_conf_reg(uint32_t channel)
+{
+    if (radio_variant == UNKNOWN) {
+        return RF_PACONFIG_PASELECT_PABOOST;
+    } else if (channel > RF_MID_BAND_THRESH) {
+        if (radio_variant == SX1276MB1LAS) {
+            return RF_PACONFIG_PASELECT_PABOOST;
+        } else {
+            return RF_PACONFIG_PASELECT_RFO;
+        }
+    } else {
+        return RF_PACONFIG_PASELECT_RFO;
+    }
+}
+
+
+/**
+ * Sets the transmit power for the module
+ */
+void sx1276::set_rf_tx_power(int8_t power)
+{
+
+    uint8_t paConfig = 0;
+    uint8_t paDac = 0;
+
+    paConfig = read_register(REG_PACONFIG);
+    paDac = read_register(REG_PADAC);
+
+    paConfig = (paConfig & RF_PACONFIG_PASELECT_MASK) | get_pa_conf_reg(_rf_settings.Channel);
+    paConfig = (paConfig & RF_PACONFIG_MAX_POWER_MASK) | 0x70;
+
+    if ((paConfig & RF_PACONFIG_PASELECT_PABOOST) == RF_PACONFIG_PASELECT_PABOOST) {
+        if (power > 17) {
+            paDac = (paDac & RF_PADAC_20DBM_MASK) | RF_PADAC_20DBM_ON;
+        } else {
+            paDac = (paDac & RF_PADAC_20DBM_MASK) | RF_PADAC_20DBM_OFF;
+        }
+        if ((paDac & RF_PADAC_20DBM_ON) == RF_PADAC_20DBM_ON) {
+            if (power < 5) {
+                power = 5;
+            }
+            if (power > 20) {
+                power = 20;
+            }
+            paConfig = (paConfig & RF_PACONFIG_OUTPUTPOWER_MASK)
+                       | (uint8_t)((uint16_t)(power - 5) & 0x0F);
+        } else {
+            if (power < 2) {
+                power = 2;
+            }
+            if (power > 17) {
+                power = 17;
+            }
+            paConfig = (paConfig & RF_PACONFIG_OUTPUTPOWER_MASK)
+                       | (uint8_t)((uint16_t)(power - 2) & 0x0F);
+        }
+    } else {
+        if (power < -1) {
+            power = -1;
+        }
+        if (power > 14) {
+            power = 14;
+        }
+        paConfig = (paConfig & RF_PACONFIG_OUTPUTPOWER_MASK)
+                   | (uint8_t)((uint16_t)(power + 1) & 0x0F);
+    }
+    write_to_register(REG_PACONFIG, paConfig);
+    write_to_register(REG_PADAC, paDac);
+}
+
+/**
+ * Actual TX - Transmit routine
+ *
+ * A DIO0 interrupt let the state machine know that a a packet is
+ * successfully sent, otherwise a TxTimeout is invoked.
+ * TxTimeout should never happen in normal circumstances as the radio should
+ * be able to send a packet out in the air no matter what.
+ */
+void sx1276::transmit(uint32_t timeout)
+{
+    switch (_rf_settings.Modem) {
+
+        case MODEM_FSK:
+            // DIO0=PacketSent
+            // DIO1=FifoEmpty
+            // DIO2=FifoFull
+            // DIO3=FifoEmpty
+            // DIO4=LowBat
+            // DIO5=ModeReady
+            write_to_register(REG_DIOMAPPING1, (read_register(REG_DIOMAPPING1) &
+                                                RF_DIOMAPPING1_DIO0_MASK &
+                                                RF_DIOMAPPING1_DIO1_MASK &
+                                                RF_DIOMAPPING1_DIO2_MASK) |
+                              RF_DIOMAPPING1_DIO1_01);
+
+            write_to_register(REG_DIOMAPPING2, (read_register(REG_DIOMAPPING2) &
+                                                RF_DIOMAPPING2_DIO4_MASK &
+                                                RF_DIOMAPPING2_MAP_MASK));
+            _rf_settings.FskPacketHandler.FifoThresh =
+                read_register(REG_FIFOTHRESH) & 0x3F;
+
+            break;
+
+        case MODEM_LORA:
+
+            if (_rf_settings.LoRa.FreqHopOn == true) {
+                write_to_register(REG_LR_IRQFLAGSMASK,
+                                  RFLR_IRQFLAGS_RXTIMEOUT |
+                                  RFLR_IRQFLAGS_RXDONE |
+                                  RFLR_IRQFLAGS_PAYLOADCRCERROR |
+                                  RFLR_IRQFLAGS_VALIDHEADER |
+                                  RFLR_IRQFLAGS_CADDONE |
+                                  RFLR_IRQFLAGS_CADDETECTED);
+
+                // DIO0=tx_done, DIO2=fhss_change_channel
+
+                write_to_register(REG_DIOMAPPING1, (read_register(REG_DIOMAPPING1) &
+                                                    RFLR_DIOMAPPING1_DIO0_MASK &
+                                                    RFLR_DIOMAPPING1_DIO2_MASK) |
+                                  RFLR_DIOMAPPING1_DIO0_01 |
+                                  RFLR_DIOMAPPING1_DIO2_01);
+            } else {
+                write_to_register(REG_LR_IRQFLAGSMASK,
+                                  RFLR_IRQFLAGS_RXTIMEOUT |
+                                  RFLR_IRQFLAGS_RXDONE |
+                                  RFLR_IRQFLAGS_PAYLOADCRCERROR |
+                                  RFLR_IRQFLAGS_VALIDHEADER |
+                                  RFLR_IRQFLAGS_CADDONE |
+                                  RFLR_IRQFLAGS_FHSSCHANGEDCHANNEL |
+                                  RFLR_IRQFLAGS_CADDETECTED);
+
+                // DIO0=tx_done
+                write_to_register(REG_DIOMAPPING1, (read_register(REG_DIOMAPPING1) &
+                                                    RFLR_DIOMAPPING1_DIO0_MASK) |
+                                  RFLR_DIOMAPPING1_DIO0_01);
+            }
+
+            break;
+    }
+
+    _rf_settings.State = RF_TX_RUNNING;
+
+    // tx_timeout_timer.attach_us(callback(this,
+    //                                    &SX1276_LoRaRadio::timeout_irq_isr), timeout * 1000);
+
+    set_operation_mode(RF_OPMODE_TRANSMITTER);
+}
+
+
+
 /**
  * Sets the module in low power mode by disconnecting
  * TX and RX submodules, turning off power amplifier etc.
@@ -497,6 +939,49 @@ unsigned char sx1276::read_register(unsigned char addr)
 
 }
 
+/**
+ * Reads multiple values from a given register
+ */
+void sx1276::read_register(uint8_t addr, uint8_t *buffer, uint8_t size)
+{
+    unsigned char spibuf[size+1];
+
+    spibuf[0] = addr & 0x7F;
+    spibuf[1] = 0x00;
+
+    // set chip-select low
+    digitalWrite(ssPin, LOW);
+
+    // set read command and read buffers to internal variable
+    wiringPiSPIDataRW(CHANNEL, spibuf, size+1);
+
+    // copies internal buffer variable to return value
+    for (uint8_t i = 0; i < (size - 1); i++) {
+        buffer[i] = spibuf[i+1];
+    }
+
+    // set chip-select high
+    digitalWrite(ssPin, HIGH);
+}
+
+
+/**
+ * Writes to FIIO provided by the chip
+ */
+void sx1276::write_fifo(uint8_t *buffer, uint8_t size)
+{
+    write_to_register(0, buffer, size);
+}
+
+/**
+ * Reads from the FIFO provided by the chip
+ */
+void sx1276::read_fifo(uint8_t *buffer, uint8_t size)
+{
+    read_register(0, buffer, size);
+}
+
+
 void sx1276::write_to_register(unsigned char addr, unsigned char value)
 {
     unsigned char spibuf[2];
@@ -506,6 +991,31 @@ void sx1276::write_to_register(unsigned char addr, unsigned char value)
     digitalWrite(ssPin, LOW);
     wiringPiSPIDataRW(CHANNEL, spibuf, 2);
 
+    digitalWrite(ssPin, HIGH);
+}
+
+/**
+ * Writes multiple bytes to a given register
+ */
+void sx1276::write_to_register(uint8_t addr, uint8_t *data, uint8_t size)
+{
+    unsigned char spibuf[size+1];
+
+    // set write command
+    spibuf[0] = addr | 0x80;
+
+    // set chip-select low
+    digitalWrite(ssPin, LOW);
+
+    // copies write data to internal data structure
+    for (uint8_t i = 0; i < size; i++) {
+        spibuf[i+1] = data[i];
+    }
+
+    // write data
+    wiringPiSPIDataRW(CHANNEL, spibuf, size+1);  
+
+    // set chip-select high
     digitalWrite(ssPin, HIGH);
 }
 
@@ -519,6 +1029,16 @@ void sx1276::sleep( void )
     this->settings.State = RF_IDLE;
 }
 
+/**
+ * Put radio in Standby mode
+ */
+void sx1276::standby(void)
+{
+    // tx_timeout_timer.detach();
+
+    set_operation_mode(RF_OPMODE_STANDBY);
+    _rf_settings.State = RF_IDLE;
+}
  
 
 
@@ -727,7 +1247,7 @@ const char* sx1276::receivepacket() {
                 std::string debug_info = "Sending messages ...";
                 std::size_t payload_len = strlen(message);
                 streamer_obj->publishMessage( message, payload_len, 
-                            "/LoRA_Test/receivedPacket/", 1,  mut, debug_info);
+                            "/LoRa_test/receivedPacket/", 1,  mut, debug_info);
             }
 
 	    return (const char*)message;
