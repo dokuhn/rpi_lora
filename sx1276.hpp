@@ -225,6 +225,21 @@ class sx1276 {
 
         void send(uint8_t *buffer, uint8_t size);
 
+        void receive(void);
+
+
+        bool perform_carrier_sense(RadioModems_t modem,
+                                    uint32_t freq,
+                                    int16_t rssi_threshold,
+                                    uint32_t max_carrier_sense_time);
+
+        void set_public_network(bool enable);
+
+        void start_cad();
+
+        void set_tx_continuous_wave(uint32_t freq, int8_t power,
+                                    uint16_t time);
+
         void set_operation_mode(uint8_t mode);
 
         void set_modem(RadioModems_t modem);
@@ -237,6 +252,7 @@ class sx1276 {
 
         void transmit(uint32_t timeout);
 
+        int16_t get_rssi(RadioModems_t modem);
 
         void set_low_power_mode();
 

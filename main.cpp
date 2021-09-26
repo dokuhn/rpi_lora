@@ -34,7 +34,7 @@ extern "C" {
 
 using namespace std;
 
-const std::string DFLT_SERVER_ADDRESS	{ "tcp://broker.hivemq.com:1883" };
+const std::string DFLT_SERVER_ADDRESS	{ "tcp://troubadix:1883" };
 const std::string CLIENT_ID				{ "paho_cpp_async_publish" };
 const std::string PERSIST_DIR			{ "./persist" };
 
