@@ -20,6 +20,7 @@
 #include "MQTTDataStreamer.hpp"
 
 #include "sx1276.hpp"
+#include "sx1276_old.hpp"
 
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
@@ -48,7 +49,7 @@ uint8_t QOS = 1;
 
 const auto TIMEOUT = std::chrono::seconds(10);
 
-static sx1276 sx1276Inst;
+static sx1276_old sx1276Inst;
 
 
 
