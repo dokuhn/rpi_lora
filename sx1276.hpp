@@ -118,6 +118,8 @@ class sx1276 {
 
         void set_modem(RadioModems_t modem);
 
+        void setup_registers();
+
         uint8_t get_fsk_bw_reg_val(uint32_t bandwidth);
 
         uint8_t get_pa_conf_reg(uint32_t channel);
