@@ -1034,6 +1034,111 @@ void sx1276::set_tx_continuous_wave(uint32_t freq, int8_t power,
     set_operation_mode(RF_OPMODE_TRANSMITTER);
 }
 
+/*****************************************************************************
+ * Private APIs                                                              *
+ ****************************************************************************/
+
+
+/**
+ * Writes a single byte to a given register
+ */
+void sx1276::write_to_register(unsigned char addr, unsigned char value)
+{
+    unsigned char spibuf[2];
+
+    spibuf[0] = addr | 0x80;
+    spibuf[1] = value;
+    digitalWrite(ssPin, LOW);
+    wiringPiSPIDataRW(CHANNEL, spibuf, 2);
+
+    digitalWrite(ssPin, HIGH);
+}
+
+/**
+ * Writes multiple bytes to a given register
+ */
+void sx1276::write_to_register(uint8_t addr, uint8_t *data, uint8_t size)
+{
+    unsigned char spibuf[size+1];
+
+    // set write command
+    spibuf[0] = addr | 0x80;
+
+    // set chip-select low
+    digitalWrite(ssPin, LOW);
+
+    // copies write data to internal data structure
+    for (uint8_t i = 0; i < size; i++) {
+        spibuf[i+1] = data[i];
+    }
+
+    // write data
+    wiringPiSPIDataRW(CHANNEL, spibuf, size+1);  
+
+    // set chip-select high
+    digitalWrite(ssPin, HIGH);
+}
+
+/**
+ * Reads the value of a single register
+ */
+unsigned char sx1276::read_register(unsigned char addr)
+{
+    unsigned char spibuf[2];
+
+    spibuf[0] = addr & 0x7F;
+    spibuf[1] = 0x00;
+    digitalWrite(ssPin, LOW);
+    wiringPiSPIDataRW(CHANNEL, spibuf, 2);
+
+    digitalWrite(ssPin, HIGH);
+
+    return spibuf[1];
+
+}
+
+/**
+ * Reads multiple values from a given register
+ */
+void sx1276::read_register(uint8_t addr, uint8_t *buffer, uint8_t size)
+{
+    unsigned char spibuf[size+1];
+
+    spibuf[0] = addr & 0x7F;
+    spibuf[1] = 0x00;
+
+    // set chip-select low
+    digitalWrite(ssPin, LOW);
+
+    // set read command and read buffers to internal variable
+    wiringPiSPIDataRW(CHANNEL, spibuf, size+1);
+
+    // copies internal buffer variable to return value
+    for (uint8_t i = 0; i < (size - 1); i++) {
+        buffer[i] = spibuf[i+1];
+    }
+
+    // set chip-select high
+    digitalWrite(ssPin, HIGH);
+}
+
+
+/**
+ * Writes to FIIO provided by the chip
+ */
+void sx1276::write_fifo(uint8_t *buffer, uint8_t size)
+{
+    write_to_register(0, buffer, size);
+}
+
+/**
+ * Reads from the FIFO provided by the chip
+ */
+void sx1276::read_fifo(uint8_t *buffer, uint8_t size)
+{
+    read_register(0, buffer, size);
+}
+
 
 /**
  * Sets up operation mode
@@ -1114,6 +1219,52 @@ void sx1276::setup_registers()
         write_to_register(radio_reg_init[i].addr, radio_reg_init[i].value);
     }
 }
+
+/**
+ * Performs the Rx chain calibration for LF and HF bands
+ *
+ * Must be called just after the reset so all registers are at their
+ * default values.
+ */
+void sx1276::rx_chain_calibration(void)
+{
+    uint8_t regPaConfigInitVal;
+    uint32_t initialFreq;
+
+    // Save context
+    regPaConfigInitVal = read_register(REG_PACONFIG);
+    initialFreq = (float)(((uint32_t) this->read_register(REG_FRFMSB) << 16) |
+                          ((uint32_t) this->read_register(REG_FRFMID) << 8) |
+                          ((uint32_t)this->read_register(REG_FRFLSB))) * (float) FREQ_STEP;
+
+    // Cut the PA just in case, RFO output, power = -1 dBm
+    write_to_register(REG_PACONFIG, 0x00);
+
+    // Launch Rx chain calibration for LF band
+    write_to_register(REG_IMAGECAL, (read_register(REG_IMAGECAL)
+                                     & RF_IMAGECAL_IMAGECAL_MASK)
+                      | RF_IMAGECAL_IMAGECAL_START);
+    while ((read_register(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING)
+            == RF_IMAGECAL_IMAGECAL_RUNNING) {
+    }
+
+    // Sets a Frequency in HF band
+    set_channel(868000000);
+
+    // Launch Rx chain calibration for HF band
+    write_to_register(REG_IMAGECAL, (read_register(REG_IMAGECAL)
+                                     & RF_IMAGECAL_IMAGECAL_MASK)
+                      | RF_IMAGECAL_IMAGECAL_START);
+    while ((read_register(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING)
+            == RF_IMAGECAL_IMAGECAL_RUNNING) {
+        // do nothing, just wait while rf image frequency calibration is done
+    }
+
+    // Restore context
+    write_to_register(REG_PACONFIG, regPaConfigInitVal);
+    set_channel(initialFreq);
+}
+
 
 /**
  * Gets FSK bandwidth values
@@ -1336,97 +1487,7 @@ void sx1276::set_antenna_switch(uint8_t mode)
 	;
 }
 
-unsigned char sx1276::read_register(unsigned char addr)
-{
-    unsigned char spibuf[2];
-
-    spibuf[0] = addr & 0x7F;
-    spibuf[1] = 0x00;
-    digitalWrite(ssPin, LOW);
-    wiringPiSPIDataRW(CHANNEL, spibuf, 2);
-
-    digitalWrite(ssPin, HIGH);
-
-    return spibuf[1];
-
-}
-
-/**
- * Reads multiple values from a given register
- */
-void sx1276::read_register(uint8_t addr, uint8_t *buffer, uint8_t size)
-{
-    unsigned char spibuf[size+1];
-
-    spibuf[0] = addr & 0x7F;
-    spibuf[1] = 0x00;
-
-    // set chip-select low
-    digitalWrite(ssPin, LOW);
-
-    // set read command and read buffers to internal variable
-    wiringPiSPIDataRW(CHANNEL, spibuf, size+1);
-
-    // copies internal buffer variable to return value
-    for (uint8_t i = 0; i < (size - 1); i++) {
-        buffer[i] = spibuf[i+1];
-    }
-
-    // set chip-select high
-    digitalWrite(ssPin, HIGH);
-}
 
 
-/**
- * Writes to FIIO provided by the chip
- */
-void sx1276::write_fifo(uint8_t *buffer, uint8_t size)
-{
-    write_to_register(0, buffer, size);
-}
-
-/**
- * Reads from the FIFO provided by the chip
- */
-void sx1276::read_fifo(uint8_t *buffer, uint8_t size)
-{
-    read_register(0, buffer, size);
-}
 
 
-void sx1276::write_to_register(unsigned char addr, unsigned char value)
-{
-    unsigned char spibuf[2];
-
-    spibuf[0] = addr | 0x80;
-    spibuf[1] = value;
-    digitalWrite(ssPin, LOW);
-    wiringPiSPIDataRW(CHANNEL, spibuf, 2);
-
-    digitalWrite(ssPin, HIGH);
-}
-
-/**
- * Writes multiple bytes to a given register
- */
-void sx1276::write_to_register(uint8_t addr, uint8_t *data, uint8_t size)
-{
-    unsigned char spibuf[size+1];
-
-    // set write command
-    spibuf[0] = addr | 0x80;
-
-    // set chip-select low
-    digitalWrite(ssPin, LOW);
-
-    // copies write data to internal data structure
-    for (uint8_t i = 0; i < size; i++) {
-        spibuf[i+1] = data[i];
-    }
-
-    // write data
-    wiringPiSPIDataRW(CHANNEL, spibuf, size+1);  
-
-    // set chip-select high
-    digitalWrite(ssPin, HIGH);
-}

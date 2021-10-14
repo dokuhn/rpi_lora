@@ -120,6 +120,8 @@ class sx1276 {
 
         void setup_registers();
 
+        void rx_chain_calibration(void);
+
         uint8_t get_fsk_bw_reg_val(uint32_t bandwidth);
 
         uint8_t get_pa_conf_reg(uint32_t channel);

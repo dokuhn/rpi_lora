@@ -8,13 +8,27 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_compile_options(-Wall -Wextra -pedantic -lstdc++)
 add_definitions(-DLMIC_SX1276)
 
-add_executable(dragino_lora_app main.cpp MQTTDataStreamer.cpp sx1276.cpp sx1276_old.cpp)
+add_executable(rpi_lora main.cpp MQTTDataStreamer.cpp sx1276.cpp sx1276_old.cpp)
 
-target_include_directories (dragino_lora_app PUBLIC 
+target_include_directories (rpi_lora PUBLIC 
                             "${CMAKE_CURRENT_SOURCE_DIR}"
                             "/home/pi/paho.mqtt.cpp/src"
                             "/home/pi/boost")
 
-target_link_directories(dragino_lora_app PUBLIC "/home/pi/boost/stage/lib")
+target_link_directories(rpi_lora PUBLIC "/home/pi/boost/stage/lib")
 
-target_link_libraries(dragino_lora_app PUBLIC wiringPi paho-mqttpp3 paho-mqtt3as boost_program_options pthread)
+target_link_libraries(rpi_lora PUBLIC wiringPi paho-mqttpp3 paho-mqtt3as boost_program_options pthread)
+
+
+
+add_executable(test_new_lib test_new_lib.cpp MQTTDataStreamer.cpp sx1276.cpp sx1276_old.cpp)
+
+target_include_directories (test_new_lib PUBLIC 
+                            "${CMAKE_CURRENT_SOURCE_DIR}"
+                            "/home/pi/paho.mqtt.cpp/src"
+                            "/home/pi/boost")
+
+target_link_directories(test_new_lib PUBLIC "/home/pi/boost/stage/lib")
+
+target_link_libraries(test_new_lib PUBLIC wiringPi paho-mqttpp3 paho-mqtt3as boost_program_options pthread)
+
