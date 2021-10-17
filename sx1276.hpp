@@ -27,15 +27,14 @@ extern "C" {
 
 }
 
-
+#include <iostream>
 #include <memory>
+#include <cstring>
+#include <mutex>
 
 #include "enums.hpp"
 #include "sx1276_RegsFsk.hpp"
 #include "sx1276_RegsLoRa.hpp"
-
-
-#include "MQTTDataStreamer.hpp"
 
 
 #define MAX_DATA_BUFFER_SIZE_SX1276  255
@@ -53,7 +52,7 @@ class sx1276 {
         int RST   = 0;
 
         // Set center frequency
-        uint32_t  freq = 868100000; // in Mhz! (868.1)
+        // uint32_t  freq = 868000000; // in Mhz! (868.1)
 
         void lock(void);
 
@@ -136,6 +135,10 @@ class sx1276 {
 
         void set_antenna_switch(uint8_t mode);
 
+        void selectreceiver();
+
+        void unselectreceiver();
+
         unsigned char read_register(unsigned char addr);
 
         void read_register(uint8_t addr, uint8_t *buffer, uint8_t size);
@@ -171,12 +174,8 @@ class sx1276 {
 
         char message[256];
 
-        std::shared_ptr<MQTTDataStreamer> streamer_obj;
 
         std::mutex mutex;
-
-
-        std::mutex *mut;
 
         uint8_t radio_variant;
 

@@ -236,7 +236,7 @@ SPDX-License-Identifier: BSD-3-Clause
 #define RFLR_FIFOTXBASEADDR                         0x80 // Default
 
 /*!
- * RegFifoTxBaseAddr
+ * RegFifoRxBaseAddr
  */
 #define RFLR_FIFORXBASEADDR                         0x00 // Default
 

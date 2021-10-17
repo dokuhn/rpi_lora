@@ -49,13 +49,17 @@ extern "C" {
 # define REG_MODEM_CONFIG2           0x1E
 # define REG_MODEM_CONFIG3           0x26
 # define REG_SYMB_TIMEOUT_LSB 	    0x1F
-# define REG_PKT_SNR_VALUE	    0x19
+# define REG_PKT_SNR_VALUE	        0x19
+#define REG_PREAMBLEMSB             0x20
+#define REG_PREAMBLELSB              0x21
 # define REG_PAYLOAD_LENGTH          0x22
 # define REG_IRQ_FLAGS_MASK          0x11
-# define REG_MAX_PAYLOAD_LENGTH 	    0x23
+# define REG_MAX_PAYLOAD_LENGTH 	 0x23
 # define REG_HOP_PERIOD              0x24
-# define REG_SYNC_WORD		    0x39
-# define REG_VERSION	  	    0x42
+# define REG_SYNC_WORD		        0x39
+# define REG_VERSION	  	        0x42
+
+
  
 # define PAYLOAD_LENGTH              0x40
  
@@ -63,7 +67,7 @@ extern "C" {
 # define REG_LNA                     0x0C
 # define LNA_MAX_GAIN                0x23
 # define LNA_OFF_GAIN                0x00
-# define LNA_LOW_GAIN		    0x20
+# define LNA_LOW_GAIN		         0x20
  
 # define RegDioMapping1              0x40 // common
 # define RegDioMapping2              0x41 // common

@@ -1,9 +1,9 @@
 /**
- * @file main.cpp
+ * @file test_new_lib.cpp
  * @author Dominik Kuhn (dominik.kuhn90@googlemail.com)
  * @brief 
  * @version 0.1
- * @date 2021-08-23
+ * @date 2021-10-15
  * 
  * @copyright Copyright (c) 2021
  * 
@@ -17,13 +17,7 @@
 #include <cstring>
 #include <cstdio>
 
-#include "MQTTDataStreamer.hpp"
-
 #include "sx1276.hpp"
-
-#include <boost/program_options.hpp>
-namespace po = boost::program_options;
-
 
 extern "C" {
 
@@ -39,168 +33,177 @@ const auto TIMEOUT = std::chrono::seconds(1);
 static sx1276 sx1276Inst;
 
 
+#define RF_FREQUENCY                                868100000 // Hz
+#define TX_OUTPUT_POWER                             14        // 14 dBm
+
+#define LORA_BANDWIDTH                              0       // [0: 125 kHz,
+                                                            //  1: 250 kHz,
+                                                            //  2: 500 kHz,
+                                                            //  3: Reserved]
+#define LORA_SPREADING_FACTOR                       7       // [SF7..SF12]
+#define LORA_CODINGRATE                             1       // [1: 4/5,
+                                                            //  2: 4/6,
+                                                            //  3: 4/7,
+                                                            //  4: 4/8]
+#define LORA_PREAMBLE_LENGTH                        8       // Same for Tx and Rx
+#define LORA_SYMBOL_TIMEOUT                         8       // Symbols
+#define LORA_FIX_LENGTH_PAYLOAD_ON                  false
+#define LORA_FHSS_ENABLED                           true  
+#define LORA_NB_SYMB_HOP                            0xFF    
+#define LORA_IQ_INVERSION                           false
+#define LORA_CRC_ENABLED                            true
+
+#define RX_TIMEOUT_VALUE                                3500      // in ms
+#define BUFFER_SIZE                                     128       // Define the payload size here
+
+
+extern "C" void isr_handler_wrapper(void)
+{        
+    
+}
+
+
+
+
 int main (int argc, char *argv[]) {
 
-    po::options_description desc("Allowed options");
-    desc.add_options()
-        ("help", "produce help message")
-        ("rec",  "setup receive mode")
-        ("sender", "setup transmit mode")
-        ("half-duplex", "setup half-duplex mode")
-    ;
+    uint32_t randomValue = 0;
+    uint8_t recvBuffer[BUFFER_SIZE];
+    uint8_t receivedbytes;
 
 
-    po::variables_map vm;        
-    po::store(po::parse_command_line(argc, argv, desc), vm);
-    po::notify(vm);    
+    /* 
+    sx1276Inst.SetupLoRa();
+
+    sx1276Inst.opmodeLora();
+    // enter standby mode (required for FIFO loading))
+    sx1276Inst.opmode(OPMODE_STANDBY);
+
+    sx1276Inst.writeReg(RegPaRamp, (sx1276Inst.readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
+
+    sx1276Inst.configPower(23); 
+    */
 
 
-    if (vm.count("help")) {
-        std::cout << desc << std::endl;
-        return 0;
-    }
+    wiringPiSetup () ;
+    pinMode(sx1276Inst.ssPin, OUTPUT);
+    pinMode(sx1276Inst.dio0, INPUT);
+    pinMode(sx1276Inst.RST, OUTPUT);
 
+    wiringPiSPISetup(sx1276Inst.CHANNEL, 500000);
 
+    sx1276Inst.radio_reset();
+    // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-    if (vm.count("sender")) {
+    std::printf("LORA chip with version %x found.\n", (int)sx1276Inst.read_register(REG_LR_VERSION) );
 
-        wiringPiSetup () ;
-        pinMode(sx1276Inst.ssPin, OUTPUT);
-        pinMode(sx1276Inst.dio0, INPUT);
-        pinMode(sx1276Inst.RST, OUTPUT);
+    sx1276Inst.init_radio();
 
-        wiringPiSPISetup(sx1276Inst.CHANNEL, 500000);
-
-        /* 
-        sx1276Inst.SetupLoRa();
-
-        sx1276Inst.opmodeLora();
-        // enter standby mode (required for FIFO loading))
-        sx1276Inst.opmode(OPMODE_STANDBY);
-
-        sx1276Inst.writeReg(RegPaRamp, (sx1276Inst.readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
-
-        sx1276Inst.configPower(23); 
-        */
-
-        std::printf("Send packets on %.6lf Mhz.\n", (double)sx1276Inst.freq/1000000);
-        std::cout << "------------------" << endl;
-
-
-        while( 1 ){
-
-            // sx1276Inst.txlora((byte*)line_buffer, (byte)std::strlen(line_buffer));
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000) );
-        }
-
-
-        
-
-    } else if(vm.count("rec")) {
-
-
-        wiringPiSetup () ;
-        pinMode(sx1276Inst.ssPin, OUTPUT);
-        pinMode(sx1276Inst.dio0, INPUT);
-        pinMode(sx1276Inst.RST, OUTPUT);
-
-        wiringPiSPISetup(sx1276Inst.CHANNEL, 500000);
-        
-        /*   
-        sx1276Inst.SetupLoRa();
-
-        sx1276Inst.init_streamer_obj(streamer_obj, &mut);
-
-        // radio init
-        sx1276Inst.opmodeLora();
-        sx1276Inst.opmode(OPMODE_STANDBY);
-        sx1276Inst.opmode(OPMODE_RX);
-        */
-
-        std::printf("Listening on %.6lf Mhz.\n", (double)sx1276Inst.freq/1000000);
-        std::cout << "------------------" << endl;
-        
-
-        while(1) {
-            // sx1276Inst.receivepacket();
-            std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-        }
-
-
-    } else if(vm.count("half-duplex")) {
-
-        std::cout << "half-duplex mode is not implemented yet" << std::endl;
-        return 0;
-
-    } else {
-        std::cout << "nothing setup" << std::endl;
-        return 1;
-    }
-
-
-
-    // int buffer_size = 256;
-    // char line_buffer[buffer_size];
-
-    // if (argc < 2) {
-    //     std::cout << "Usage: argv[0] sender|rec [message]" << endl;
-    //     exit(1);
-    // }
-
-
-    // callback cb;
-    // mqtt_async_client->set_callback(cb);
-
-    // auto connOpts = mqtt::connect_options_builder()
-	// 	.clean_session()
-	// 	.will(mqtt::message(TOPIC, LWT_PAYLOAD, QOS))
-	// 	.finalize();
-
+    sx1276Inst.sleep();
     
+    sx1276Inst.set_channel(RF_FREQUENCY);
+
+    sx1276Inst.set_rx_config( MODEM_LORA, LORA_BANDWIDTH, LORA_SPREADING_FACTOR,
+                            LORA_CODINGRATE, 0, LORA_PREAMBLE_LENGTH,
+                            LORA_SYMBOL_TIMEOUT, LORA_FIX_LENGTH_PAYLOAD_ON, BUFFER_SIZE,
+                            LORA_CRC_ENABLED, LORA_FHSS_ENABLED, LORA_NB_SYMB_HOP,
+                            LORA_IQ_INVERSION, true );
+
+    /*
+    sx1276Inst.set_tx_config( MODEM_LORA, TX_OUTPUT_POWER, 0, LORA_BANDWIDTH,
+                         LORA_SPREADING_FACTOR, LORA_CODINGRATE,
+                         LORA_PREAMBLE_LENGTH, LORA_FIX_LENGTH_PAYLOAD_ON,
+                         LORA_CRC_ENABLED, LORA_FHSS_ENABLED, LORA_NB_SYMB_HOP, 
+                         LORA_IQ_INVERSION_ON, 2000000 );
+    */
+
+    // sx1276Inst.set_public_network(true);
     
-    // mutex object used to make the publishMessage() in MQTTDataStreamer
-    // library thread safe.
+    sx1276Inst.receive();
+
+    // void (*fun_ptr2isr_handler)(void) = &isr_handler_wrapper;
+
+	// wiringPiISR(sx1276Inst.dio0, INT_EDGE_RISING, fun_ptr2isr_handler);
+
   
+    std::printf("Listening on %.6lf Mhz.\n", (double)RF_FREQUENCY/1000000);
+    std::cout << "------------------" << endl;
 
-    // cout << "\nConnecting..." << endl;
-    // mqtt::token_ptr conntok = mqtt_async_client->connect(connOpts);
-    // cout << "Waiting for the connection..." << endl;
-    // conntok->wait();
-    // cout << "  ...OK" << endl;
+    std::printf("operation mode: %x \n", sx1276Inst.read_register(REG_OPMODE));
+    std::printf("LoRa Sync Word: %x \n", sx1276Inst.read_register(REG_LR_SYNCWORD));
+    std::printf("RegModemConfig1: %x \t RegModemConfig2: %x \t RegModemConfig3: %x \n", 
+                sx1276Inst.read_register(REG_LR_MODEMCONFIG1),
+                sx1276Inst.read_register(REG_LR_MODEMCONFIG2),
+                sx1276Inst.read_register(REG_LR_MODEMCONFIG3));
 
+    std::printf("REG_FRFMSB: %x \t REG_FRFMID: %x \t REG_FRFLSB: %x \n",
+                sx1276Inst.read_register(REG_FRFMSB),
+                sx1276Inst.read_register(REG_FRFMID),
+                sx1276Inst.read_register(REG_FRFLSB));
 
-    // auto msg = mqtt::make_message(TOPIC, "Hallo Welt !!!");
-    // msg->set_qos(QOS);
+    std::printf("REG_LR_SYMBTIMEOUTLSB: %x \t REG_LR_PREAMBLEMSB: %x \t REG_LR_PREAMBLELSB: %x \n",
+                sx1276Inst.read_register(REG_LR_SYMBTIMEOUTLSB),
+                sx1276Inst.read_register(REG_LR_PREAMBLEMSB),
+                sx1276Inst.read_register(REG_LR_PREAMBLELSB));
 
-    // std::size_t buffer_len = TEST_MSG.size();
-
-    // std::string debug_info = "Sending messages ...";
 
     
-
-    // while(1) {
+    while(1) {
+        // sx1276Inst.receivepacket();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        // sx1276Inst.send(sendBuffer, sizeof(sendBuffer));
+        if(digitalRead(sx1276Inst.dio0) == 1){
             
-    //         streamer_obj->publishMessage(TEST_MSG.data(), buffer_len, 
-    //                     TOPIC, 1,  &mut, debug_info);
-    //         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-    // }
+            int irqflags = sx1276Inst.read_register(REG_LR_IRQFLAGS);
+            std::printf("irgflags: %x \n", irqflags );
 
-   
+            //  payload crc: 0x20
+            if((irqflags & RFLR_IRQFLAGS_PAYLOADCRCERROR_MASK) != 0u)
+            {
+                printf("CRC error\n");
+                fflush(stdout);
+                // clear CRC error
+                sx1276Inst.write_to_register(REG_LR_IRQFLAGS, RFLR_IRQFLAGS_PAYLOADCRCERROR_MASK);
+            } 
 
-    // if (!strcmp("sender", argv[1])) {
-        
-	    
-    //     //if (argc > 2)
-    //     //    strncpy((char *)hello, argv[2], sizeof(hello));
+            if((irqflags & RFLR_IRQFLAGS_RXDONE_MASK) != 0u)
+            {
 
-    //     // while( readline(STDIN_FILENO, line_buffer, sizeof(line_buffer)) > 1 ){
-        
-        
-    // } else {
+                // clear rxDone
+                sx1276Inst.write_to_register(REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE_MASK);
 
+                uint8_t currentAddr = sx1276Inst.read_register(REG_LR_FIFORXCURRENTADDR);
+                uint8_t receivedCount = sx1276Inst.read_register(REG_LR_RXNBBYTES);
+                receivedbytes = receivedCount;
+
+                std::printf("received bytes: %d \n", receivedbytes );
+                std::printf("current addr: %x \n", currentAddr);
+
+                sx1276Inst.write_to_register(REG_LR_FIFOADDRPTR, currentAddr);
+
+                for(int i = 0; i < receivedCount; i++)
+                {
+                    recvBuffer[i] = sx1276Inst.read_register(REG_LR_FIFO);
+                }
+
+                recvBuffer[receivedCount+1] = '\0';
+
+                std::printf("payload: %s \n", recvBuffer);
+
+            }
+
+            irqflags = sx1276Inst.read_register(REG_LR_IRQFLAGS);
+            std::printf("irgflags: %x \n", irqflags );
+
+            std::cout << "debug message !!!" << std::endl;  
+           
+            
+
+
+        }
+        // randomValue = sx1276Inst.random();
         
-    // }
+    }
 
     return 0;
 }

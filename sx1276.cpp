@@ -163,13 +163,13 @@ void sx1276::init_radio()
     //setup_spi();
 
     // Calibrate radio receiver chain
-    //rx_chain_calibration();
+    // rx_chain_calibration();
 
     // set radio mode to sleep
     set_operation_mode(RF_OPMODE_SLEEP);
 
     // Setup radio registers to defaults
-    //setup_registers();
+    // setup_registers();
 
     // set modem type - defaults to FSK here
     set_modem(MODEM_FSK);
@@ -186,9 +186,9 @@ void sx1276::init_radio()
  */
 void sx1276::radio_reset()
 {
-    digitalWrite(RST, HIGH);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     digitalWrite(RST, LOW);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    digitalWrite(RST, HIGH);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -206,10 +206,11 @@ uint8_t sx1276::get_status(void)
 void sx1276::set_channel(uint32_t freq)
 {
     _rf_settings.Channel = freq;
-    freq = (uint32_t)((float) freq / (float) FREQ_STEP);
-    write_to_register(REG_FRFMSB, (uint8_t)((freq >> 16) & 0xFF));
-    write_to_register(REG_FRFMID, (uint8_t)((freq >> 8) & 0xFF));
-    write_to_register(REG_FRFLSB, (uint8_t)(freq & 0xFF));
+    // set frequency
+    uint64_t frf = ((uint64_t)freq << 19) / 32000000;
+    write_to_register(REG_FRFMSB, (uint8_t)((frf >> 16) & 0xFF));
+    write_to_register(REG_FRFMID, (uint8_t)((frf >> 8) & 0xFF));
+    write_to_register(REG_FRFLSB, (uint8_t)(frf & 0xFF));
 }
 
 /**
@@ -379,17 +380,26 @@ void sx1276::set_rx_config(RadioModems_t modem, uint32_t bandwidth,
             write_to_register(REG_LR_PREAMBLEMSB, (uint8_t)((preamble_len >> 8) & 0xFF));
             write_to_register(REG_LR_PREAMBLELSB, (uint8_t)(preamble_len & 0xFF));
 
+            write_to_register(REG_LR_LNA, RFLR_LNA_GAIN_G1 | RFLR_LNA_BOOST_HF_ON);
+            
+            /*
             if (fix_len == 1) {
                 write_to_register(REG_LR_PAYLOADLENGTH, payload_len);
             }
+            */
+
+            write_to_register(REG_LR_PAYLOADLENGTH, payload_len >> 1);
+            write_to_register(REG_LR_PAYLOADMAXLENGTH, payload_len);
 
             if (_rf_settings.LoRa.FreqHopOn == true) {
+                /*
                 write_to_register(REG_LR_PLLHOP, (read_register(REG_LR_PLLHOP)
                                                   & RFLR_PLLHOP_FASTHOP_MASK)
-                                  | RFLR_PLLHOP_FASTHOP_ON);
+                                  | RFLR_PLLHOP_FASTHOP_ON);     
+                */            
                 write_to_register(REG_LR_HOPPERIOD, _rf_settings.LoRa.HopPeriod);
             }
-
+            /*
             if ((bandwidth == 9) && (_rf_settings.Channel > RF_MID_BAND_THRESH)) {
                 // ERRATA 2.1 - Sensitivity Optimization with a 500 kHz Bandwidth
                 write_to_register(REG_LR_TEST36, 0x02);
@@ -402,6 +412,7 @@ void sx1276::set_rx_config(RadioModems_t modem, uint32_t bandwidth,
                 // ERRATA 2.1 - Sensitivity Optimization with a 500 kHz Bandwidth
                 write_to_register(REG_LR_TEST36, 0x03);
             }
+            
 
             if (datarate == 6) {
                 write_to_register(REG_LR_DETECTOPTIMIZE, (read_register(REG_LR_DETECTOPTIMIZE)
@@ -414,6 +425,9 @@ void sx1276::set_rx_config(RadioModems_t modem, uint32_t bandwidth,
                                   | RFLR_DETECTIONOPTIMIZE_SF7_TO_SF12);
                 write_to_register(REG_LR_DETECTIONTHRESHOLD, RFLR_DETECTIONTHRESH_SF7_TO_SF12);
             }
+            */
+
+
             break;
 
         default:
@@ -714,7 +728,7 @@ void sx1276::sleep( void )
 {
     // txTimeoutTimer.detach( );
     // rxTimeoutTimer.detach( );
-    
+
     set_operation_mode( RF_OPMODE_SLEEP );
     this->settings.State = RF_IDLE;
 }
@@ -799,6 +813,7 @@ void sx1276::receive(void)
                                                     | RFLR_INVERTIQ_RX_OFF | RFLR_INVERTIQ_TX_OFF));
                 write_to_register(REG_LR_INVERTIQ2, RFLR_INVERTIQ2_OFF);
             }
+            /*
 
             // ERRATA 2.3 - Receiver Spurious Reception of a LoRa Signal
             if (_rf_settings.LoRa.Bandwidth < 9) {
@@ -845,6 +860,9 @@ void sx1276::receive(void)
                                   read_register(REG_LR_DETECTOPTIMIZE) | 0x80);
             }
 
+            */
+
+            /*
             if (_rf_settings.LoRa.FreqHopOn == true) {
                 write_to_register(REG_LR_IRQFLAGSMASK, RFLR_IRQFLAGS_VALIDHEADER
                                   | RFLR_IRQFLAGS_TXDONE
@@ -858,6 +876,7 @@ void sx1276::receive(void)
                                   | RFLR_DIOMAPPING1_DIO0_00
                                   | RFLR_DIOMAPPING1_DIO2_00);
             } else {
+            */
                 write_to_register(REG_LR_IRQFLAGSMASK, RFLR_IRQFLAGS_VALIDHEADER
                                   | RFLR_IRQFLAGS_TXDONE
                                   | RFLR_IRQFLAGS_CADDONE
@@ -868,7 +887,9 @@ void sx1276::receive(void)
                 write_to_register(REG_DIOMAPPING1, (read_register(REG_DIOMAPPING1)
                                                     & RFLR_DIOMAPPING1_DIO0_MASK)
                                   | RFLR_DIOMAPPING1_DIO0_00);
+            /*
             }
+            */
             write_to_register(REG_LR_FIFORXBASEADDR, 0);
             write_to_register(REG_LR_FIFOADDRPTR, 0);
 
@@ -1039,6 +1060,17 @@ void sx1276::set_tx_continuous_wave(uint32_t freq, int8_t power,
  ****************************************************************************/
 
 
+void sx1276::selectreceiver()
+{
+    digitalWrite(ssPin, LOW);
+}
+
+void sx1276::unselectreceiver()
+{
+    digitalWrite(ssPin, HIGH);
+}
+
+
 /**
  * Writes a single byte to a given register
  */
@@ -1048,10 +1080,10 @@ void sx1276::write_to_register(unsigned char addr, unsigned char value)
 
     spibuf[0] = addr | 0x80;
     spibuf[1] = value;
-    digitalWrite(ssPin, LOW);
+    selectreceiver();
     wiringPiSPIDataRW(CHANNEL, spibuf, 2);
 
-    digitalWrite(ssPin, HIGH);
+    unselectreceiver();
 }
 
 /**
@@ -1064,13 +1096,13 @@ void sx1276::write_to_register(uint8_t addr, uint8_t *data, uint8_t size)
     // set write command
     spibuf[0] = addr | 0x80;
 
-    // set chip-select low
-    digitalWrite(ssPin, LOW);
-
     // copies write data to internal data structure
     for (uint8_t i = 0; i < size; i++) {
         spibuf[i+1] = data[i];
     }
+
+    // set chip-select low
+    digitalWrite(ssPin, LOW);
 
     // write data
     wiringPiSPIDataRW(CHANNEL, spibuf, size+1);  
@@ -1086,12 +1118,11 @@ unsigned char sx1276::read_register(unsigned char addr)
 {
     unsigned char spibuf[2];
 
+    selectreceiver();
     spibuf[0] = addr & 0x7F;
     spibuf[1] = 0x00;
-    digitalWrite(ssPin, LOW);
     wiringPiSPIDataRW(CHANNEL, spibuf, 2);
-
-    digitalWrite(ssPin, HIGH);
+    unselectreceiver();
 
     return spibuf[1];
 
@@ -1107,16 +1138,16 @@ void sx1276::read_register(uint8_t addr, uint8_t *buffer, uint8_t size)
     spibuf[0] = addr & 0x7F;
     spibuf[1] = 0x00;
 
+    // copies internal buffer variable to return value
+    for (uint8_t i = 0; i < (size - 1); i++) {
+        buffer[i] = spibuf[i+1];
+    }
+
     // set chip-select low
     digitalWrite(ssPin, LOW);
 
     // set read command and read buffers to internal variable
     wiringPiSPIDataRW(CHANNEL, spibuf, size+1);
-
-    // copies internal buffer variable to return value
-    for (uint8_t i = 0; i < (size - 1); i++) {
-        buffer[i] = spibuf[i+1];
-    }
 
     // set chip-select high
     digitalWrite(ssPin, HIGH);

@@ -19,7 +19,6 @@
 
 #include "MQTTDataStreamer.hpp"
 
-#include "sx1276.hpp"
 #include "sx1276_old.hpp"
 
 #include <boost/program_options.hpp>
@@ -265,6 +264,26 @@ int main (int argc, char *argv[]) {
         std::printf("Listening at SF%i on %.6lf Mhz.\n", sx1276Inst.sf,(double)sx1276Inst.freq/1000000);
         std::cout << "------------------" << endl;
         
+
+        std::printf("operation mode: %x \n", sx1276Inst.readReg(REG_OPMODE));
+        std::printf("LoRa Sync Word: %x \n", sx1276Inst.readReg(REG_SYNC_WORD));
+        std::printf("RegModemConfig1: %x \t RegModemConfig2: %x \t RegModemConfig3: %x \n", 
+                sx1276Inst.readReg(REG_MODEM_CONFIG),
+                sx1276Inst.readReg(REG_MODEM_CONFIG2),
+                sx1276Inst.readReg(REG_MODEM_CONFIG3));
+
+        printf("REG_FRF_MSB: %x \t REG_FRF_MID: %x \t REG_FRF_LSB: %x \n",
+               sx1276Inst.readReg(REG_FRF_MSB),sx1276Inst.readReg(REG_FRF_MID),sx1276Inst.readReg(REG_FRF_LSB));
+
+
+        std::printf("REG_LR_SYMBTIMEOUTLSB: %x \t REG_LR_PREAMBLEMSB: %x \t REG_LR_PREAMBLELSB: %x \n",
+                sx1276Inst.readReg(REG_SYMB_TIMEOUT_LSB),
+                sx1276Inst.readReg(REG_PREAMBLEMSB),
+                sx1276Inst.readReg(REG_PREAMBLELSB));
+
+
+        
+
 	    void (*fun_ptr2isr_handler)(void) = &isr_handler_wrapper;
 
 	    wiringPiISR(sx1276Inst.dio0, INT_EDGE_RISING, fun_ptr2isr_handler);
