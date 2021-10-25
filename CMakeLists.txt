@@ -31,3 +31,15 @@ target_link_directories(test_new_lib PUBLIC "/home/pi/boost/stage/lib")
 
 target_link_libraries(test_new_lib PUBLIC wiringPi boost_program_options pthread)
 
+
+
+
+add_executable(TestRandomReceive ./tests/TestRandomReceive.cpp sx1276.cpp)
+
+target_include_directories (TestRandomReceive PUBLIC 
+                            "${CMAKE_CURRENT_SOURCE_DIR}"
+                            "/home/pi/boost")
+
+target_link_directories(TestRandomReceive PUBLIC "/home/pi/boost/stage/lib")
+
+target_link_libraries(TestRandomReceive PUBLIC wiringPi boost_program_options pthread)
