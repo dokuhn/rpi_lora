@@ -1091,7 +1091,7 @@ void sx1276::write_to_register(unsigned char addr, unsigned char value)
  */
 void sx1276::write_to_register(uint8_t addr, uint8_t *data, uint8_t size)
 {
-    unsigned char spibuf[size+1];
+    unsigned char spibuf[256];
 
     // set write command
     spibuf[0] = addr | 0x80;
@@ -1102,13 +1102,15 @@ void sx1276::write_to_register(uint8_t addr, uint8_t *data, uint8_t size)
     }
 
     // set chip-select low
-    digitalWrite(ssPin, LOW);
+    // digitalWrite(ssPin, LOW);
+    selectreceiver();
 
     // write data
     wiringPiSPIDataRW(CHANNEL, spibuf, size+1);  
 
     // set chip-select high
-    digitalWrite(ssPin, HIGH);
+    // digitalWrite(ssPin, HIGH);
+    unselectreceiver();
 }
 
 /**

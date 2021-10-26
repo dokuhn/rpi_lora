@@ -177,7 +177,7 @@ class sx1276 {
 
         std::mutex mutex;
 
-        uint8_t radio_variant;
+        uint8_t radio_variant = UNKNOWN;
 
         /*******************************************************************************
         *

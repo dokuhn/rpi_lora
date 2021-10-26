@@ -43,3 +43,15 @@ target_include_directories (TestRandomReceive PUBLIC
 target_link_directories(TestRandomReceive PUBLIC "/home/pi/boost/stage/lib")
 
 target_link_libraries(TestRandomReceive PUBLIC wiringPi boost_program_options pthread)
+
+
+
+add_executable(TestSendPacket ./tests/TestSendPacket.cpp sx1276.cpp)
+
+target_include_directories (TestSendPacket PUBLIC 
+                            "${CMAKE_CURRENT_SOURCE_DIR}"
+                            "/home/pi/boost")
+
+target_link_directories(TestSendPacket PUBLIC "/home/pi/boost/stage/lib")
+
+target_link_libraries(TestSendPacket PUBLIC wiringPi boost_program_options pthread)
