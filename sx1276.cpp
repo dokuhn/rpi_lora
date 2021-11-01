@@ -1243,6 +1243,28 @@ void sx1276::set_modem(RadioModems_t modem)
 }
 
 /**
+ * Set the radio module variant
+ */
+ /*
+void sx1276::set_sx1276_variant_type()
+{
+    if (_rf_ctrls.ant_switch != NC) {
+        _ant_switch.input();
+        ThisThread::sleep_for(1);
+        if (_ant_switch == 1) {
+            radio_variant = SX1276MB1LAS;
+        } else {
+            radio_variant = SX1276MB1MAS;
+        }
+        _ant_switch.output();
+        ThisThread::sleep_for(1);
+    } else {
+        radio_variant = MBED_CONF_SX1276_LORA_DRIVER_RADIO_VARIANT;
+    }
+}
+*/
+
+/**
  * Sets the radio registers to defaults
  */
 void sx1276::setup_registers()

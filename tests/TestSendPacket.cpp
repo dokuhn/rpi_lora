@@ -40,7 +40,7 @@ static sx1276 sx1276Inst;
                                                             //  1: 250 kHz,
                                                             //  2: 500 kHz,
                                                             //  3: Reserved]
-#define LORA_SPREADING_FACTOR                       7       // [SF7..SF12]
+#define LORA_SPREADING_FACTOR                       12      // [SF7..SF12]
 #define LORA_CODINGRATE                             1       // [1: 4/5,
                                                             //  2: 4/6,
                                                             //  3: 4/7,
@@ -89,7 +89,7 @@ int main (int argc, char *argv[]) {
                          LORA_IQ_INVERSION, 2000000 );
     
 
-    // sx1276Inst.set_public_network(true);
+    sx1276Inst.set_public_network(true);
     
       
     std::printf("Listening on %.6lf Mhz.\n", (double)RF_FREQUENCY/1000000);

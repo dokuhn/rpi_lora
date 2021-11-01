@@ -116,7 +116,8 @@ void sx1276_old::SetupLoRa()
         }
     }
 
-    opmode(OPMODE_SLEEP);
+    // opmode(OPMODE_SLEEP);
+    opmodeLora();
 
     // set frequency
     uint64_t frf = ((uint64_t)freq << 19) / 32000000;
@@ -125,6 +126,7 @@ void sx1276_old::SetupLoRa()
     writeReg(REG_FRF_LSB, (uint8_t)(frf>> 0) );
 
     writeReg(REG_SYNC_WORD, 0x34); // LoRaWAN public sync word
+    printf("SF: %d\n",sf);
 
     if (sx1272) {
         if (sf == SF11 || sf == SF12) {
@@ -134,13 +136,18 @@ void sx1276_old::SetupLoRa()
         }
         writeReg(REG_MODEM_CONFIG2,(sf<<4) | 0x04);
     } else {
-        if (sf == SF11 || sf == SF12) {
+        writeReg(REG_MODEM_CONFIG,0x72);
+        writeReg(REG_MODEM_CONFIG2,(sf<<4) | 0x04);
+
+        if ( (sf == SF11) || (sf == SF12) ) {
             writeReg(REG_MODEM_CONFIG3,0x0C);
+            printf("SF: %d\n",sf);
+            std::printf("REG_MODEM_CONFIG3: %x \n", 
+                        readReg(REG_MODEM_CONFIG3));
         } else {
             writeReg(REG_MODEM_CONFIG3,0x04);
         }
-        writeReg(REG_MODEM_CONFIG,0x72);
-        writeReg(REG_MODEM_CONFIG2,(sf<<4) | 0x04);
+        
     }
 
     if (sf == SF10 || sf == SF11 || sf == SF12) {

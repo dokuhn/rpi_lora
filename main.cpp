@@ -201,8 +201,7 @@ int main (int argc, char *argv[]) {
         wiringPiSPISetup(sx1276Inst.CHANNEL, 500000);
 
         sx1276Inst.SetupLoRa();
-
-        sx1276Inst.opmodeLora();
+        
         // enter standby mode (required for FIFO loading))
         sx1276Inst.opmode(OPMODE_STANDBY);
 
@@ -212,6 +211,23 @@ int main (int argc, char *argv[]) {
 
         std::printf("Send packets at SF%i on %.6lf Mhz.\n", sx1276Inst.sf, (double)sx1276Inst.freq/1000000);
         std::cout << "------------------" << endl;
+
+        std::printf("operation mode: %x \n", sx1276Inst.readReg(REG_OPMODE));
+        std::printf("LoRa Sync Word: %x \n", sx1276Inst.readReg(REG_SYNC_WORD));
+        std::printf("REG_MODEM_CONFIG: %x \t REG_MODEM_CONFIG2: %x \t REG_MODEM_CONFIG3: %x \n", 
+                sx1276Inst.readReg(REG_MODEM_CONFIG),
+                sx1276Inst.readReg(REG_MODEM_CONFIG2),
+                sx1276Inst.readReg(REG_MODEM_CONFIG3));
+
+        printf("REG_FRF_MSB: %x \t REG_FRF_MID: %x \t REG_FRF_LSB: %x \n",
+               sx1276Inst.readReg(REG_FRF_MSB),sx1276Inst.readReg(REG_FRF_MID),sx1276Inst.readReg(REG_FRF_LSB));
+
+
+        std::printf("REG_SYMB_TIMEOUT_LSB: %x \t REG_PREAMBLEMSB: %x \t REG_PREAMBLELSB: %x \n",
+                sx1276Inst.readReg(REG_SYMB_TIMEOUT_LSB),
+                sx1276Inst.readReg(REG_PREAMBLEMSB),
+                sx1276Inst.readReg(REG_PREAMBLELSB));
+
 
         
         std::thread handleTopicsThread(handleTopics, streamer_obj, topics_to_handle, &mut);
