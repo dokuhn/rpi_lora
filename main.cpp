@@ -34,7 +34,7 @@ extern "C" {
 
 using namespace std;
 
-const std::string DFLT_SERVER_ADDRESS	{ "tcp://troubadix:1883" };
+const std::string DFLT_SERVER_ADDRESS	{ "tcp://dompfaf:1883" };
 const std::string CLIENT_ID				{ "paho_cpp_async_publish" };
 const std::string PERSIST_DIR			{ "./persist" };
 
@@ -49,7 +49,6 @@ uint8_t QOS = 1;
 const auto TIMEOUT = std::chrono::seconds(10);
 
 static sx1276_old sx1276Inst;
-
 
 
 /////////////////////////////////////////////////////////////////////////////
