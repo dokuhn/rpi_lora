@@ -1,10 +1,14 @@
-# RaspberryPi LoRaWAN (SX1276) to MQTT-TTN Gateway  
+# RaspberryPi LoRa (SX1276) to MQTT Bridge  
 
-This repository contains a simple proof-of-concept implementation of a single channel (receive or send at the same time) LoRaWAN gateway communicating with the IoT world via MQTT protocol.
+This repository contains a simple proof-of-concept implementation of a single channel (receive or send at the same time) 
+LoRa Bridge communicating with the IoT world via MQTT protocol. Packets received via LoRa are published on a specific MQTT topic,
+in this example LoRa_test/receivedPacket/. At the same time, this bridge software subscribes to another topic to be able to send 
+data via LoRa. Due to the used SX1276 chip only one channel can be demodulated and received at the same time, i.e. in the EU a 
+frequency like 868.1 MHz as a band in the frequency range 863-870 MHz.
 
 It has been tested on the Raspberry Pi 3 platform, using a Semtech SX1276 transceiver (HopeRF RFM95W).
 
-Maintainer: Dominik Kuhn <dominik.kuhn90@googlemail.com>
+Maintained: Dominik Kuhn <dominik.kuhn90@googlemail.com>
 
 ## ToDo
 

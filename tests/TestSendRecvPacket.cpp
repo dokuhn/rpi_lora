@@ -70,11 +70,6 @@ const auto TIMEOUT = std::chrono::seconds(1);
 #define BUFFER_SIZE                                 128       // Define the payload size here
 
 
-extern "C" void isr_handler_wrapper(void)
-{
-
-}
-
 void handleTopics(std::shared_ptr<MQTTDataStreamer> streamer_obj,
         const std::vector<std::shared_ptr<TopicsToHandle>>& topics_to_handle,
         std::mutex* mut) {
@@ -128,7 +123,11 @@ public:
         std::strcpy (msg, msg_->to_string().c_str());
 
 	sx1276Inst.send( (unsigned char*)msg , (unsigned char)msg_len );
+
         std::cout << "sending packet ..." << std::endl;
+
+	sx1276Inst.receive();
+
 
     }
 };
@@ -136,7 +135,6 @@ public:
 
 int main (int argc, char *argv[]) {
 
-    uint32_t randomValue = 0;
     uint8_t recvBuffer[BUFFER_SIZE];
     uint8_t receivedbytes;
 
@@ -196,20 +194,16 @@ int main (int argc, char *argv[]) {
                             LORA_CRC_ENABLED, LORA_FHSS_ENABLED, LORA_NB_SYMB_HOP,
                             LORA_IQ_INVERSION, true );
 
-    /*
+
     sx1276Inst.set_tx_config( MODEM_LORA, TX_OUTPUT_POWER, 0, LORA_BANDWIDTH,
                          LORA_SPREADING_FACTOR, LORA_CODINGRATE,
                          LORA_PREAMBLE_LENGTH, LORA_FIX_LENGTH_PAYLOAD_ON,
                          LORA_CRC_ENABLED, LORA_FHSS_ENABLED, LORA_NB_SYMB_HOP, 
-                         LORA_IQ_INVERSION_ON, 2000000 );
-    */
+                         LORA_IQ_INVERSION, 2000000 );
 
     sx1276Inst.set_public_network(true);
-    
-    sx1276Inst.receive();
 
-    // void (*fun_ptr2isr_handler)(void) = &isr_handler_wrapper;
-    // wiringPiISR(sx1276Inst.dio0, INT_EDGE_RISING, fun_ptr2isr_handler);
+    sx1276Inst.receive();
 
     std::printf("Send and receive packets on %.6lf Mhz.\n", (double)RF_FREQUENCY/1000000);
     std::cout << "------------------" << endl;
