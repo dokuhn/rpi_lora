@@ -35,7 +35,7 @@ using namespace std;
 
 static sx1276 sx1276Inst;
 
-const std::string DFLT_SERVER_ADDRESS	{ "tcp://dompfaf:1883" };
+const std::string DFLT_SERVER_ADDRESS	{ "tcp://localhost:1883" };
 const std::string CLIENT_ID		{ "paho_cpp_async_publish" };
 const std::string PERSIST_DIR		{ "./persist" };
 
@@ -86,7 +86,7 @@ void handleTopics(std::shared_ptr<MQTTDataStreamer> streamer_obj,
      */
     while(true) {
         for(const auto& topic : topics_to_handle) {
-            if(topic->name == "/LoRa_test/transmitPacket/") {
+            if(topic->name == "LoRa_test/transmitPacket/") {
                 if(topic->message_received){
 
                     topic->message_received = false;
@@ -139,7 +139,7 @@ int main (int argc, char *argv[]) {
     uint8_t receivedbytes;
 
 
-    /* 
+    /*
     sx1276Inst.SetupLoRa();
 
     sx1276Inst.opmodeLora();
@@ -148,7 +148,7 @@ int main (int argc, char *argv[]) {
 
     sx1276Inst.writeReg(RegPaRamp, (sx1276Inst.readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
 
-    sx1276Inst.configPower(23); 
+    sx1276Inst.configPower(23);
     */
 
     std::cout << "Initializing and connecting for server '" << DFLT_SERVER_ADDRESS << "'..." << std::endl;
@@ -178,7 +178,6 @@ int main (int argc, char *argv[]) {
     wiringPiSPISetup(sx1276Inst.CHANNEL, 500000);
 
     sx1276Inst.radio_reset();
-    // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
     std::printf("LORA chip with version %x found.\n", (int)sx1276Inst.read_register(REG_LR_VERSION) );
 

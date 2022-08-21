@@ -38,10 +38,10 @@ extern "C" {
 
 
 #define MAX_DATA_BUFFER_SIZE_SX1276  255
- 
+
 
 class sx1276 {
- 
+
     public:
 
         const int CHANNEL = 0;

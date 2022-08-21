@@ -1,12 +1,12 @@
 /**
  * @file test_new_lib.cpp
  * @author Dominik Kuhn (dominik.kuhn90@googlemail.com)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2021-10-15
- * 
+ *
  * @copyright Copyright (c) 2021
- * 
+ *
  */
 
 #include <iostream>
@@ -48,8 +48,8 @@ static sx1276 sx1276Inst;
 #define LORA_PREAMBLE_LENGTH                        8       // Same for Tx and Rx
 #define LORA_SYMBOL_TIMEOUT                         8       // Symbols
 #define LORA_FIX_LENGTH_PAYLOAD_ON                  false
-#define LORA_FHSS_ENABLED                           true  
-#define LORA_NB_SYMB_HOP                            0xFF    
+#define LORA_FHSS_ENABLED                           true
+#define LORA_NB_SYMB_HOP                            0xFF
 #define LORA_IQ_INVERSION                           false
 #define LORA_CRC_ENABLED                            true
 
@@ -57,50 +57,27 @@ static sx1276 sx1276Inst;
 #define BUFFER_SIZE                                     128       // Define the payload size here
 
 
-extern "C" void isr_handler_wrapper(void)
-{        
-    
-}
-
-
 
 
 int main (int argc, char *argv[]) {
 
-    uint32_t randomValue = 0;
     uint8_t recvBuffer[BUFFER_SIZE];
     uint8_t receivedbytes;
-
-
-    /* 
-    sx1276Inst.SetupLoRa();
-
-    sx1276Inst.opmodeLora();
-    // enter standby mode (required for FIFO loading))
-    sx1276Inst.opmode(OPMODE_STANDBY);
-
-    sx1276Inst.writeReg(RegPaRamp, (sx1276Inst.readReg(RegPaRamp) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
-
-    sx1276Inst.configPower(23); 
-    */
 
 
     wiringPiSetup () ;
     pinMode(sx1276Inst.ssPin, OUTPUT);
     pinMode(sx1276Inst.dio0, INPUT);
     pinMode(sx1276Inst.RST, OUTPUT);
-
     wiringPiSPISetup(sx1276Inst.CHANNEL, 500000);
 
     sx1276Inst.radio_reset();
-    // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
     std::printf("LORA chip with version %x found.\n", (int)sx1276Inst.read_register(REG_LR_VERSION) );
 
     sx1276Inst.init_radio();
 
     sx1276Inst.sleep();
-    
     sx1276Inst.set_channel(RF_FREQUENCY);
 
     sx1276Inst.set_rx_config( MODEM_LORA, LORA_BANDWIDTH, LORA_SPREADING_FACTOR,
@@ -109,23 +86,9 @@ int main (int argc, char *argv[]) {
                             LORA_CRC_ENABLED, LORA_FHSS_ENABLED, LORA_NB_SYMB_HOP,
                             LORA_IQ_INVERSION, true );
 
-    /*
-    sx1276Inst.set_tx_config( MODEM_LORA, TX_OUTPUT_POWER, 0, LORA_BANDWIDTH,
-                         LORA_SPREADING_FACTOR, LORA_CODINGRATE,
-                         LORA_PREAMBLE_LENGTH, LORA_FIX_LENGTH_PAYLOAD_ON,
-                         LORA_CRC_ENABLED, LORA_FHSS_ENABLED, LORA_NB_SYMB_HOP, 
-                         LORA_IQ_INVERSION_ON, 2000000 );
-    */
-
     sx1276Inst.set_public_network(true);
-    
     sx1276Inst.receive();
 
-    // void (*fun_ptr2isr_handler)(void) = &isr_handler_wrapper;
-
-	// wiringPiISR(sx1276Inst.dio0, INT_EDGE_RISING, fun_ptr2isr_handler);
-
-  
     std::printf("Listening on %.6lf Mhz.\n", (double)RF_FREQUENCY/1000000);
     std::cout << "------------------" << endl;
 
@@ -147,13 +110,12 @@ int main (int argc, char *argv[]) {
                 sx1276Inst.read_register(REG_LR_PREAMBLELSB));
 
 
-    
+
     while(1) {
-        // sx1276Inst.receivepacket();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        // sx1276Inst.send(sendBuffer, sizeof(sendBuffer));
+
         if(digitalRead(sx1276Inst.dio0) == 1){
-            
+
             int irqflags = sx1276Inst.read_register(REG_LR_IRQFLAGS);
             std::printf("irgflags: %x \n", irqflags );
 
@@ -164,7 +126,7 @@ int main (int argc, char *argv[]) {
                 fflush(stdout);
                 // clear CRC error
                 sx1276Inst.write_to_register(REG_LR_IRQFLAGS, RFLR_IRQFLAGS_PAYLOADCRCERROR_MASK);
-            } 
+            }
 
             if((irqflags & RFLR_IRQFLAGS_RXDONE_MASK) != 0u)
             {
@@ -195,14 +157,13 @@ int main (int argc, char *argv[]) {
             irqflags = sx1276Inst.read_register(REG_LR_IRQFLAGS);
             std::printf("irgflags: %x \n", irqflags );
 
-            std::cout << "debug message !!!" << std::endl;  
-           
-            
+            std::cout << "debug message !!!" << std::endl;
+
+
 
 
         }
-        // randomValue = sx1276Inst.random();
-        
+
     }
 
     return 0;
