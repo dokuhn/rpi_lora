@@ -139,6 +139,23 @@ int main (int argc, char *argv[]) {
     uint8_t receivedbytes;
 
 
+    po::options_description desc("Allowed options");
+    desc.add_options()
+          ("help", "produce help message")
+          ("hostname,h", po::value<string>()->default_value("localhost"), "Hostname")
+          ("port,p", po::value<int>()->default_value(1883), "Port")
+    ;
+
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+
+    if (vm.count("help")) {
+          std::cout << desc << std::endl;
+          return 0;
+    }
+
     /*
     sx1276Inst.SetupLoRa();
 
@@ -151,14 +168,14 @@ int main (int argc, char *argv[]) {
     sx1276Inst.configPower(23);
     */
 
-    std::cout << "Initializing and connecting for server '" << DFLT_SERVER_ADDRESS << "'..." << std::endl;
+    std::cout << "Initializing and connecting for server '" << vm["hostname"].as<string>()  << "'..." << std::endl;
 
     std::vector<std::shared_ptr<TopicsToHandle>> topics_to_handle;
     topics_to_handle.push_back(std::make_shared<DataTransmitTopic>(
                                "LoRa_test/transmitPacket/")); 
 
-    auto mqtt_async_client = std::make_shared<mqtt::async_client>(
-                              DFLT_SERVER_ADDRESS, CLIENT_ID);
+    auto mqtt_async_client = std::make_shared<mqtt::async_client>( (string)"tcp://" + vm["hostname"].as<string>() +
+                                                                   (string)":" + to_string(vm["port"].as<int>()), CLIENT_ID);
 
     auto callback = std::make_shared<MqttCallback>
                     (mqtt_async_client, topics_to_handle);
